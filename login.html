@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Proyecto - Login</title>
+
+    <!-- Custom fonts for this template-->
+    <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
+
+    <!-- Custom styles for this template-->
+    <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast-message {
+            margin-bottom: 10px;
+            padding: 15px 20px;
+            color: white;
+            /* Texto blanco */
+            background-color: green;
+            /* Fondo verde */
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            /* Sombra para un mejor diseño */
+            font-size: 16px;
+            animation: fadeInOut 4s ease;
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            10%,
+            90% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-primary">
+
+    <div class="container">
+        <div id="toast-container"></div>
+        <!-- Outer Row -->
+        <div class="row justify-content-center">
+
+            <div class="col-xl-10 col-lg-12 col-md-9">
+
+                <div class="card o-hidden border-0 shadow-lg my-5">
+                    <div class="card-body p-0">
+                        <!-- Nested Row within Card Body -->
+                        <div class="row">
+
+                            <div class="col-lg-12">
+                                <div class="p-5">
+                                    <div class="text-center">
+                                        <h1 class="h4 text-gray-900 mb-4">Bienvenido!</h1>
+                                    </div>
+                                    <form class="user" action="../proyecto_taller/auth/login.php" method="POST">
+                                        <div class="form-group">
+                                            <input type="text" name="username" class="form-control form-control-user"
+                                                placeholder="Nombre de usuario o correo electrónico" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="password" name="password"
+                                                class="form-control form-control-user" placeholder="Contraseña"
+                                                required>
+                                        </div>
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox small">
+                                                <input type="checkbox" class="custom-control-input" id="customCheck">
+                                                <label class="custom-control-label" for="customCheck">Recordarme</label>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-user btn-block">
+                                            Iniciar sesión
+                                        </button>
+                                    </form>
+
+                                    <hr>
+                                    <div class="text-center">
+                                        <a class="small" href="modules/reset_password/forgot-password/forgot-password.php">Olvidaste la contraseña?</a>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Bootstrap core JavaScript-->
+    <script src="vendor/jquery/jquery.min.js"></script>
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Core plugin JavaScript-->
+    <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
+
+    <!-- Custom scripts for all pages-->
+    <script src="js/sb-admin-2.min.js"></script>
+    <script>
+     window.onload = function() {
+    // Revisa si hay un mensaje en la sesión (verifica si la variable de sesión está presente)
+    fetch('auth/session_handler.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                const toastContainer = document.getElementById('toast-container') || createToastContainer();
+                const toast = document.createElement('div');
+                toast.className = 'toast-message';
+                toast.innerText = data.message;
+
+                // Determina el color del mensaje (error o success)
+                if (data.type === 'error') {
+                    toast.style.backgroundColor = 'red';
+                    toast.style.color = 'white';
+                } else if (data.type === 'success') {
+                    toast.style.backgroundColor = 'green';
+                    toast.style.color = 'white';
+                }
+
+                toastContainer.appendChild(toast);
+
+                // Eliminar el mensaje flotante después de 4 segundos
+                setTimeout(() => {
+                    toast.remove();
+                }, 4000);
+            }
+        });
+};
+
+// Crear el contenedor de mensajes si no existe
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+    return container;
+}
+
+
+    </script>
+
+</body>
+
+</html>

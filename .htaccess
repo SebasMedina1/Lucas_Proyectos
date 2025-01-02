@@ -1,0 +1,4 @@
+RewriteEngine On
+
+# Redirige automáticamente al archivo login.html si no hay nada en la URL
+RewriteRule ^$ login.html [L]
