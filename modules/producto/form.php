@@ -51,19 +51,29 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
                     <div class="col-md-6">
                         <br>
                         <label for="descrip_producto">Descripción del Producto</label>
-                        <input type="text" class="form-control" id="descrip_producto" name="descrip_producto" placeholder="Ingrese descripción de la materia prima" required>
+                        <input type="text" class="form-control" id="descrip_producto" name="descrip_producto" placeholder="Ingrese descripción del producto" required>
                     </div>
 
                     <div class="col-md-6">
                         <br>
                         <label for="descrip_precio">Precio</label>
-                        <input type="text" class="form-control" id="descrip_precio" name="descrip_precio" placeholder="Ingrese el precio del producto" required>
+                        <input 
+                            type="number" 
+                            class="form-control" 
+                            id="descrip_precio" 
+                            name="descrip_precio" 
+                            placeholder="Ingrese el precio del producto" 
+                            required 
+                            inputmode="numeric" 
+                            pattern="[0-9]*"
+                            required>
                     </div>
+
 
                     <div class="col-md-6">
                         <br>
                         <label for="tipo_producto">Tipo Producto</label>
-                        <select name="tipo_producto" id="tipo_producto" class="form-control">
+                        <select name="tipo_producto" id="tipo_producto" class="form-control" required>
                             <option value="">Seleccione el tipo de producto</option>
                             <?php 
                             try {
@@ -81,7 +91,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
                     <div class="col-md-6">
                         <br>
                         <label for="unidad_medida">Unidad de medida</label>
-                        <select name="unidad_medida" id="unidad_medida" class="form-control">
+                        <select name="unidad_medida" id="unidad_medida" class="form-control" required>
                             <option value="">Seleccione una unidad de medida</option>
                             <?php 
                             try {
@@ -99,7 +109,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
                     <div class="col-md-6">
                         <br>
                         <label for="tipo_iva">Tipo Iva</label>
-                        <select name="tipo_iva" id="tipo_iva" class="form-control">
+                        <select name="tipo_iva" id="tipo_iva" class="form-control" required>
                             <option value="">Seleccione el tipo de Iva</option>
                             <?php 
                             try {
@@ -117,7 +127,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
                     <div class="col-md-6">
                         <br>
                         <label for="cod_deposito">Depósito, en dónde se almacenará el producto</label>
-                        <select name="cod_deposito" id="cod_deposito" class="form-control">
+                        <select name="cod_deposito" id="cod_deposito" class="form-control" required>
                             <option value="">Seleccione el depósito</option>
                             <?php 
                             try {
@@ -180,12 +190,12 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
 
                     <div class="form-group">
                         <label for="descrip_precio">Precio</label>
-                        <input type="text" class="form-control" id="descrip_precio" name="descrip_precio" value="<?php echo $data['precio']; ?>">
+                        <input type="text" class="form-control" required id="descrip_precio" name="descrip_precio" value="<?php echo $data['precio']; ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="tipo_producto">Tipo Producto</label>
-                        <select name="tipo_producto" id="tipo_producto" class="form-control">
+                        <select name="tipo_producto" id="tipo_producto" class="form-control" required>
                             <?php 
                             try {
                                 $query_dep = $pdo->query("SELECT cod_tipo_producto, t_p_descrip FROM tipo_producto ORDER BY cod_tipo_producto ASC");
@@ -202,7 +212,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
 
                     <div class="form-group">
                         <label for="unidad">Unidad de medida</label>
-                        <select name="unidad" id="unidad" class="form-control">
+                        <select name="unidad" id="unidad" class="form-control" required>
                             
                             <?php 
                             try {
@@ -220,7 +230,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
 
                     <div class="form-group">
                         <label for="iva">Tipo Iva</label>
-                        <select name="iva" id="iva" class="form-control">
+                        <select name="iva" id="iva" class="form-control" required>
                             
                             <?php 
                             try {
@@ -238,7 +248,7 @@ if (isset($_GET['form_producto']) && $_GET['form'] == 'add') { ?>
 
                     <div class="form-group">
                         <label for="cod_deposito">Depósito</label>
-                        <select name="cod_deposito" id="cod_deposito" class="form-control">
+                        <select name="cod_deposito" id="cod_deposito" class="form-control" required>
                             
                         <?php 
                             try {

@@ -1,21 +1,22 @@
 <?php
 require_once '../../config/database.php';
-require_once '../../reporte/reporte_notaCredito.php'; // Clase para generar PDF
+require_once '../../reporte/reporte_notaDebito.php'; // Clase para generar PDF
 
 // Verificar si se recibió el parámetro 'nota_id'
-if (!isset($_GET['nota_id']) || empty($_GET['nota_id'])) {
+if (!isset($_GET['nota_debito_id']) || empty($_GET['nota_debito_id'])) {
     die("No se proporcionó un ID de nota válido.");
 }
 
-$nota_id = intval($_GET['nota_id']); // Asegurarse de que sea un entero
+$nota_id = intval($_GET['nota_debito_id']); // Asegurarse de que sea un entero
 
 $pdf = new BasePDF();
 $pdf->AddPage();
 
 // Configurar el título del reporte
 $pdf->SetFont('Arial', 'B', 14);
-$pdf->Cell(0, 10, 'Detalle de la Nota de Compra', 0, 1, 'C');
+$pdf->Cell(0, 10, mb_convert_encoding('Detalle de la Nota Débito', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
 $pdf->Ln(5);
+
 
 try {
     // Configurar conexión PDO
@@ -26,28 +27,28 @@ try {
     // Consulta para obtener los datos principales de la nota específica
     $queryNota = "
         SELECT 
-            nc.nota_id, 
-            nc.nota_fecha, 
-            nc.nota_hora, 
-            nc.nota_timbrado, 
-            nc.nota_estado, 
+            nd.nota_debito_id, 
+            nd.nota_fecha, 
+            nd.nota_hora, 
+            nd.nota_estado,
+            nd.nota_cargo,
             m.motivo_descripcion AS motivo,
             pro.razon_social AS proveedor,
             u.username AS usuario
         FROM 
-            notas_compra nc
+            nota_debito nd
         JOIN 
-            motivo m ON nc.motivo_id = m.motivo_id
+            motivo_debito m ON nd.motivo_id = m.motivo_id
         JOIN 
-            proveedor pro ON nc.cod_proveedor = pro.cod_proveedor
+            proveedor pro ON nd.cod_proveedor = pro.cod_proveedor
         JOIN 
-            usuarios u ON nc.id_usuario = u.id_usuario
+            usuarios u ON nd.id_usuario = u.id_usuario
         WHERE 
-            nc.nota_id = :nota_id;
+            nd.nota_debito_id = :nota_debito_id;
     ";
 
     $stmtNota = $pdo->prepare($queryNota);
-    $stmtNota->bindParam(':nota_id', $nota_id, PDO::PARAM_INT);
+    $stmtNota->bindParam(':nota_debito_id', $nota_id, PDO::PARAM_INT);
     $stmtNota->execute();
 
     // Obtener los datos de la nota y mostrarlos en la parte superior izquierda
@@ -56,7 +57,7 @@ try {
     
         $pdf->SetX(35);
         $pdf->Cell(30, 8, 'Nota ID:', 0, 0);
-        $pdf->Cell(50, 8, $rowNota['nota_id'], 0, 1);
+        $pdf->Cell(50, 8, $rowNota['nota_debito_id'], 0, 1);
     
         $pdf->SetX(35);
         $pdf->Cell(30, 8, 'Fecha:', 0, 0);
@@ -72,15 +73,15 @@ try {
     
         $pdf->SetX(35);
         $pdf->Cell(30, 8, 'Estado:', 0, 0);
-        $pdf->Cell(50, 8, $rowNota['nota_estado'], 0, 1);
-    
-        $pdf->SetX(35);
-        $pdf->Cell(30, 8, 'Timbrado:', 0, 0);
-        $pdf->Cell(50, 8, $rowNota['nota_timbrado'], 0, 1);
+        $pdf->Cell(50, 8, $rowNota['nota_estado'], 0, 1);      
     
         $pdf->SetX(35);
         $pdf->Cell(30, 8, 'Motivo:', 0, 0);
         $pdf->Cell(50, 8, $rowNota['motivo'], 0, 1);
+
+        $pdf->SetX(35);
+        $pdf->Cell(30, 8, 'Cargo adicional:', 0, 0);
+        $pdf->Cell(50, 8, number_format($rowNota['nota_cargo'], 0, ',', '.') . ' Gs', 0, 1);  
     
         $pdf->SetX(35);
         $pdf->Cell(30, 8, 'Proveedor:', 0, 0);
@@ -107,17 +108,17 @@ try {
             ncd.nota_precio,
             ncd.nota_iva
         FROM 
-            notas_compra_detalle ncd
+            nota_debito_detalle ncd
         JOIN 
             producto p ON ncd.cod_producto = p.cod_producto
         WHERE 
-            ncd.nota_id = :nota_id
+            ncd.nota_debito_id = :nota_debito_id
         ORDER BY 
             p.p_descrip;
     ";
 
     $stmtDetalle = $pdo->prepare($queryDetalle);
-    $stmtDetalle->bindParam(':nota_id', $nota_id, PDO::PARAM_INT);
+    $stmtDetalle->bindParam(':nota_debito_id', $nota_id, PDO::PARAM_INT);
     $stmtDetalle->execute();
 
     // Añadir los detalles al PDF

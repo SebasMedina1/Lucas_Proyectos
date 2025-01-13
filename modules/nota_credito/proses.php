@@ -35,6 +35,36 @@ if ($_GET['act'] == 'insert_nota_credito') {
 
         $nota_hora = $_POST['hora'];
 
+
+            // Verificar si el número de timbrado ya existe
+        $query_timbrado = $pdo->prepare("SELECT COUNT(*) FROM notas_compra WHERE nota_timbrado = :nota_timbrado");
+        $query_timbrado->bindParam(':nota_timbrado', $nota_timbrado);
+        $query_timbrado->execute();
+        $timbrado_existe = $query_timbrado->fetchColumn();
+
+        if ($timbrado_existe > 0) {
+            // Mostrar mensaje de error si el timbrado ya existe
+            echo "<script>
+                    alert('El número de timbrado ya existe. Por favor, ingrese un número diferente.');
+                    window.location.href = 'view.php?gestionar_compras=add&form=add&act=insert';
+                </script>";
+            exit;
+        }
+
+        // Verificar si el número de nota ya existe
+        $query_nota_nro = $pdo->prepare("SELECT COUNT(*) FROM notas_compra WHERE nota_nro = :nota_nro");
+        $query_nota_nro->bindParam(':nota_nro', $nota_nro);
+        $query_nota_nro->execute();
+        $nota_nro_existe = $query_nota_nro->fetchColumn();
+
+        if ($nota_nro_existe > 0) {
+            // Mostrar mensaje de error si el número de nota ya existe
+            echo "<script>
+                    alert('El número de nota ya existe. Por favor, ingrese un número diferente.');
+                    window.location.href = 'view.php?gestionar_compras=add&form=add&act=insert';
+                </script>";
+            exit;
+        }
         
 
         // Validar factura
@@ -46,24 +76,19 @@ if ($_GET['act'] == 'insert_nota_credito') {
         $query_factura->execute(['fact_id' => $fact_id]);
         $factura = $query_factura->fetch(PDO::FETCH_ASSOC);
 
-        if (!$factura) {
-            throw new Exception("Factura no encontrada.");
-        }
 
-        // Validar monto de la nota de crédito
-        if ($nota_total > $factura['fact_total']) {
-            throw new Exception("El monto de la nota de crédito no puede ser mayor al monto de la factura.");
-        }
+
+
 
         // Validar fechas
         // Extraer el mes y año de las fechas
-        $factura_mes = date('Y-m', strtotime($factura['fact_fecha'])); // Año y mes de la factura
-        $nota_mes = date('Y-m', strtotime($nota_fecha)); // Año y mes de la nota de crédito
+        //$factura_mes = date('Y-m', strtotime($factura['fact_fecha'])); // Año y mes de la factura
+        //$nota_mes = date('Y-m', strtotime($nota_fecha)); // Año y mes de la nota de crédito
 
         // Validar que sean del mismo mes y año
-        if ($factura_mes !== $nota_mes) {
-            throw new Exception("La nota de crédito solo puede emitirse dentro del mismo mes que la factura.");
-        }
+        //if ($factura_mes !== $nota_mes) {
+        //    throw new Exception("La nota de crédito solo puede emitirse dentro del mismo mes que la factura.");
+        //}
 
 
         // Insertar en notas_compra
@@ -113,108 +138,86 @@ if ($_GET['act'] == 'insert_nota_credito') {
             switch ($motivo_id) {
                 case 1: // Devolución de productos, parcialmente
 
-                    // Obtener los detalles de los productos devueltos
-                    $detalles = json_decode($_POST['productos'], true); // Detalles enviados desde el formulario
-                
-                    if (empty($detalles)) {
-                        throw new Exception("No se encontraron detalles de productos para procesar.");
-                    }
-                
-                    $monto_total_devuelto = 0; // Inicializar el monto total devuelto
-                    $iva_5_devuelto_total = 0; // Inicializar el total del IVA devuelto al 5%
-                    $iva_10_devuelto_total = 0; // Inicializar el total del IVA devuelto al 10%
-                
-                    foreach ($detalles as $detalle) {
-                        // Actualizar el stock del producto devuelto
-                        $query_stock = $pdo->prepare("
-                            UPDATE stock
-                            SET stock_existencia = GREATEST(stock_existencia - :cantidad, 0)
-                            WHERE cod_producto = :cod_producto
-                        ");
-                        $query_stock->execute([
-                            'cantidad' => $detalle['cantidad'],
-                            'cod_producto' => $detalle['codigo'],
-                        ]);
-                
-                        // Calcular el monto devuelto para este producto
-                        $monto_devuelto = $detalle['cantidad'] * $detalle['precio'];
-                        $monto_total_devuelto += $monto_devuelto; // Acumular el monto total devuelto
-                
-                        // Obtener el iva_id del producto
-                        $query_producto = $pdo->prepare("
-                            SELECT iva_id
-                            FROM producto
-                            WHERE cod_producto = :cod_producto
-                        ");
-                        $query_producto->execute(['cod_producto' => $detalle['codigo']]);
-                        $producto_iva_id = $query_producto->fetchColumn();
-                
-                        // Calcular el IVA unitario y el IVA total devuelto para este producto
-                        $iva_unitario = 0;
-                        $iva_total_producto = 0;
-                        if ($producto_iva_id == 1) { // IVA 5%
-                            $iva_unitario = intval($detalle['precio'] / 21);
-                            $iva_total_producto = intval($detalle['cantidad'] * $iva_unitario);
-                            $iva_5_devuelto_total += $iva_total_producto; // Acumular al total de IVA 5% devuelto
-                        } elseif ($producto_iva_id == 2) { // IVA 10%
-                            $iva_unitario = intval($detalle['precio'] / 11);
-                            $iva_total_producto = intval($detalle['cantidad'] * $iva_unitario);
-                            $iva_10_devuelto_total += $iva_total_producto; // Acumular al total de IVA 10% devuelto
-                        }
-                
-                        // Actualizar fact_iva y cantidad en facturas_detalle_compra
-                        $query_detalle_update = $pdo->prepare("
-                            UPDATE facturas_detalle_compra
-                            SET 
-                                fact_iva = :iva_unitario,
-                                fact_cantidad = GREATEST(fact_cantidad - :cantidad, 0)
-                            WHERE fact_id = :fact_id AND cod_producto = :cod_producto
-                        ");
-                        $query_detalle_update->execute([
-                            'iva_unitario' => $iva_unitario,
-                            'cantidad' => $detalle['cantidad'],
-                            'fact_id' => $fact_id,
-                            'cod_producto' => $detalle['codigo'],
-                        ]);
-                    }
-                
-                    // **Actualizar el total del IVA en iva_compras**
-                    $query_iva_update = $pdo->prepare("
-                        UPDATE iva_compras
-                        SET 
-                            iva_5 = GREATEST(iva_5 - :iva_5_devuelto, 0),
-                            iva_10 = GREATEST(iva_10 - :iva_10_devuelto, 0)
-                        WHERE fact_id = :fact_id
+                // Obtener los detalles de los productos devueltos
+                $detalles = json_decode($_POST['productos'], true);
+
+                if (empty($detalles)) {
+                    throw new Exception("No se encontraron detalles de productos para procesar.");
+                }
+
+                // Inicializar variables
+                $monto_total_devuelto = 0;
+                $iva_5_devuelto_total = 0;
+                $iva_10_devuelto_total = 0;
+
+                foreach ($detalles as $detalle) {
+                    // Actualizar el stock del producto devuelto
+                    $query_stock = $pdo->prepare("
+                        UPDATE stock
+                        SET stock_existencia = GREATEST(stock_existencia - :cantidad, 0)
+                        WHERE cod_producto = :cod_producto
                     ");
-                    $query_iva_update->execute([
-                        'iva_5_devuelto' => $iva_5_devuelto_total,
-                        'iva_10_devuelto' => $iva_10_devuelto_total,
-                        'fact_id' => $fact_id,
-                    ]);
-                
-                    // **Actualizar fact_total y estado en facturas_compra**
-                    $query_factura_update = $pdo->prepare("
-                        UPDATE facturas_compra
-                        SET 
-                            fact_total = GREATEST(fact_total - :monto_total_devuelto, 0),
-                            fact_estado = CASE 
-                                WHEN fact_total - :monto_total_devuelto = 0 THEN 'ANULADA'
-                                ELSE 'FINALIZADO - DEVOLUCIÓN PARCIAL'
-                            END
-                        WHERE fact_id = :fact_id
-                    ");
-                    $query_factura_update->execute([
-                        'monto_total_devuelto' => $monto_total_devuelto,
-                        'fact_id' => $fact_id,
+                    $query_stock->execute([
+                        'cantidad' => $detalle['cantidad'],
+                        'cod_producto' => $detalle['codigo'],
                     ]);
 
+                    // Calcular el monto devuelto (subtotal sin IVA)
+                    $monto_devuelto = $detalle['cantidad'] * $detalle['precio'];
+
+                    // Obtener el iva_id del producto
+                    $query_producto = $pdo->prepare("
+                        SELECT iva_id
+                        FROM producto
+                        WHERE cod_producto = :cod_producto
+                    ");
+                    $query_producto->execute(['cod_producto' => $detalle['codigo']]);
+                    $producto_iva_id = $query_producto->fetchColumn();
+
+                    // Calcular el IVA devuelto
+                    $iva_unitario = 0;
+                    $iva_total_producto = 0;
+
+                    if ($producto_iva_id == 1) { // IVA 5%
+                        $iva_unitario = intval($detalle['precio'] / 21);
+                        $iva_total_producto = intval($detalle['cantidad'] * $iva_unitario);
+                        $iva_5_devuelto_total += $iva_total_producto;
+                    } elseif ($producto_iva_id == 2) { // IVA 10%
+                        $iva_unitario = intval($detalle['precio'] / 11);
+                        $iva_total_producto = intval($detalle['cantidad'] * $iva_unitario);
+                        $iva_10_devuelto_total += $iva_total_producto;
+                    }
+
+                    // Sumar el monto devuelto + IVA al total devuelto
+                    $monto_total_devuelto += $monto_devuelto + $iva_total_producto;
+                }
+
+                // Actualizar el estado de la factura a "DEVOLUCIÓN PARCIAL"
+                $query_factura_update = $pdo->prepare("
+                    UPDATE facturas_compra
+                    SET fact_estado = 'DEVOLUCIÓN PARCIAL'
+                    WHERE fact_id = :fact_id
+                ");
+                $query_factura_update->execute(['fact_id' => $fact_id]);
 
                 
-                    // Redirigir con mensaje de éxito
-                    header("Location: view.php?alert=1");
-                    exit();
-                
-                    break;
+
+                // Actualizar el monto total en cuenta_pagar
+                $query_update_cuenta_pagar = $pdo->prepare("
+                    UPDATE cuenta_pagar
+                    SET cta_total = cta_total - :monto_total_devuelto, estado = 'DEVOLUCIÓN PARCIAL'
+                    WHERE fact_id = :fact_id
+                ");
+                $query_update_cuenta_pagar->execute([
+                    'monto_total_devuelto' => $monto_total_devuelto,
+                    'fact_id' => $fact_id,
+                ]);
+
+                // Redirigir con mensaje de éxito
+                header("Location: view.php?alert=1");
+                exit();
+
+                break;
                 
 
 
@@ -294,7 +297,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Actualizar el monto total en la tabla cuenta_pagar
                     $query_cta_pagar_update = $pdo->prepare("
                         UPDATE cuenta_pagar
-                        SET cta_total = :nuevo_total, estado = 'FINALIZADO - CREDITO'
+                        SET cta_total = :nuevo_total, estado = 'DESCUENTO POSTERIOR'
                         WHERE fact_id = :fact_id
                     ");
                     $query_cta_pagar_update->execute([
@@ -305,7 +308,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Actualizar el total en la tabla facturas_compra
                     $query_factura_update = $pdo->prepare("
                         UPDATE facturas_compra
-                        SET fact_total = :nuevo_total, fact_estado = 'FINALIZADO - CREDITO'
+                        SET fact_total = :nuevo_total, fact_estado = 'FINALIZADO - DESCUENTO POSTERIOR'
                         WHERE fact_id = :fact_id
                     ");
                     $query_factura_update->execute([
@@ -344,7 +347,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Reestructurar cuenta a pagar en caso de devolución completa
                     $query_cta_pagar_update = $pdo->prepare("
                         UPDATE cuenta_pagar
-                        SET estado = 'ANULADA'
+                        SET estado = 'ANULADA - DEVOLUCIÓN TOTAL DE PRODUCTOS'
                         WHERE fact_id = :fact_id
                     ");
                     $query_cta_pagar_update->execute([
@@ -354,7 +357,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Cambiar estado de la tabla orden
                     $query_update_orden = $pdo->prepare("
                         UPDATE orden_compras
-                        SET orden_estado = 'ANULADA'
+                        SET orden_estado = 'EN PROCESO'
                         WHERE orden_id = (SELECT orden_id FROM facturas_compra WHERE fact_id = :fact_id)
                         ");
                     $query_update_orden->execute(['fact_id' => $fact_id]); 
@@ -362,7 +365,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Cambiar estado de la tabla presupuesto
                     $query_update_presupuesto = $pdo->prepare("
                         UPDATE presupuesto_compra
-                        SET pre_estado = 'ANULADA'
+                        SET pre_estado = 'PENDIENTE'
                         WHERE presupuesto_id = (
                             SELECT presupuesto_id 
                             FROM orden_compras 
@@ -374,7 +377,7 @@ if ($_GET['act'] == 'insert_nota_credito') {
                     // Cambiar estado de la tabla pedidos_compras a 'ANULADA'
                     $query_update_pedidos = $pdo->prepare("
                         UPDATE pedidos_compras
-                        SET estado = 'ANULADA'
+                        SET estado = 'PENDIENTE'
                         WHERE pedido_id = (
                             SELECT pedido_id 
                             FROM presupuesto_compra 
@@ -427,6 +430,20 @@ if ($_GET['act'] == 'anular_nota_credito') {
         // Recuperar el ID de la nota de crédito
         $nota_id = $_GET['nota_id'];
 
+        $stmtNotaCredito = $pdo->prepare("
+            SELECT nota_estado 
+            FROM notas_compra 
+            WHERE nota_id = :nota_id
+        ");
+        $stmtNotaCredito->execute([':nota_id' => $nota_id]);
+        $notaCredito = $stmtNotaCredito->fetch(PDO::FETCH_ASSOC);
+
+        // Redirigir si la nota de crédito ya está anulada
+        if (!$notaCredito || $notaCredito['nota_estado'] === 'ANULADA') {
+            header("Location: view.php?alert=5"); // Alertar al usuario que la nota ya está anulada
+            exit;
+        }
+
         // Validar que la nota de crédito existe
         $query_nota = $pdo->prepare("
             SELECT nota_total, motivo_id, fact_id
@@ -463,6 +480,210 @@ if ($_GET['act'] == 'anular_nota_credito') {
                     $pdo->beginTransaction();
             
                     // Paso 1: Obtener el `fact_id` desde `notas_compra` usando el `nota_id`
+                    $query_fact_id = $pdo->prepare("SELECT fact_id FROM notas_compra WHERE nota_id = :nota_id");
+                    $query_fact_id->execute(['nota_id' => $nota_id]);
+                    $fact_id = $query_fact_id->fetchColumn();
+            
+                    if (!$fact_id) {
+                        throw new Exception("No se encontró el fact_id asociado al nota_id: $nota_id");
+                    }
+            
+                    // Paso 2: Obtener el `orden_id` desde `facturas_compra` usando el `fact_id`
+                    $query_orden_id = $pdo->prepare("SELECT orden_id FROM facturas_compra WHERE fact_id = :fact_id");
+                    $query_orden_id->execute(['fact_id' => $fact_id]);
+                    $orden_id = $query_orden_id->fetchColumn();
+            
+                    // Paso 3: Obtener los detalles originales desde `orden_detalle_compras`
+                    $query_detalles = $pdo->prepare("SELECT od.cod_producto, od.orden_cantidad, od.orden_precio, p.iva_id FROM orden_detalle_compras od INNER JOIN producto p ON od.cod_producto = p.cod_producto WHERE od.orden_id = :orden_id");
+                    $query_detalles->execute(['orden_id' => $orden_id]);
+                    $detalles = $query_detalles->fetchAll(PDO::FETCH_ASSOC);
+            
+                    // Inicializar variables para el cálculo
+                    $nuevo_total = 0;
+                    $total_iva = 0;
+            
+                    // Paso 4: Recalcular el monto total y el IVA
+                    foreach ($detalles as $detalle) {
+                        $cod_producto = $detalle['cod_producto'];
+                        $orden_cantidad = intval($detalle['orden_cantidad']);
+                        $precio = floatval($detalle['orden_precio']);
+                        $iva_id = intval($detalle['iva_id']);
+            
+                        // Calcular el subtotal del producto
+                        $subtotal = $orden_cantidad * $precio;
+                        $nuevo_total += $subtotal;
+            
+                        // Calcular el IVA unitario y total
+                        $iva_unitario = 0;
+                        if ($iva_id == 1) { // IVA 5%
+                            $iva_unitario = $precio / 21;
+                        } elseif ($iva_id == 2) { // IVA 10%
+                            $iva_unitario = $precio / 11;
+                        }
+                        $total_iva += $iva_unitario * $orden_cantidad;
+            
+                        // Actualizar el stock del producto (sumar la cantidad devuelta)
+                        $query_stock_update = $pdo->prepare("UPDATE stock SET stock_existencia = stock_existencia + :cantidad WHERE cod_producto = :cod_producto");
+                        $query_stock_update->execute([
+                            'cantidad' => $orden_cantidad,
+                            'cod_producto' => $cod_producto,
+                        ]);
+                    }
+            
+                    // Sumar el IVA total al nuevo total
+                    $nuevo_total += $total_iva;
+            
+                    // Paso 5: Actualizar el total en `facturas_compra`
+                    $query_update_factura = $pdo->prepare("UPDATE facturas_compra SET fact_total = :nuevo_total, fact_estado = 'FINALIZADO' WHERE fact_id = :fact_id");
+                    $query_update_factura->execute([
+                        'nuevo_total' => $nuevo_total,
+                        'fact_id' => $fact_id,
+                    ]);
+            
+                    // Paso 6: Actualizar el total en `cuenta_pagar`
+                    $query_update_cta_pagar = $pdo->prepare("UPDATE cuenta_pagar SET cta_total = :nuevo_total, estado = 'FINALIZADO' WHERE fact_id = :fact_id");
+                    $query_update_cta_pagar->execute([
+                        'nuevo_total' => $nuevo_total,
+                        'fact_id' => $fact_id,
+                    ]);
+            
+                    // Confirmar la transacción
+                    $pdo->commit();
+            
+                    // Redirigir con mensaje de éxito
+                    header("Location: view.php?alert=3");
+                    exit();
+            
+                } catch (Exception $e) {
+                    // Revertir la transacción en caso de error
+                    $pdo->rollBack();
+                    echo "Error: " . $e->getMessage();
+                }
+
+                case 2: // Descuentos aplicados posteriormente
+
+                    try {
+                        // Inicia una transacción
+                        $pdo->beginTransaction();
+                
+                        // Paso 1: Obtener el `fact_id` desde `notas_compra` usando el `nota_id`
+                        $query_fact_id = $pdo->prepare("SELECT fact_id FROM notas_compra WHERE nota_id = :nota_id");
+                        $query_fact_id->execute(['nota_id' => $nota_id]);
+                        $fact_id = $query_fact_id->fetchColumn();
+                
+                        if (!$fact_id) {
+                            throw new Exception("No se encontró el fact_id asociado al nota_id: $nota_id");
+                        }
+                
+                        // Paso 2: Obtener el `orden_id` desde `facturas_compra` usando el `fact_id`
+                        $query_orden_id = $pdo->prepare("SELECT orden_id FROM facturas_compra WHERE fact_id = :fact_id");
+                        $query_orden_id->execute(['fact_id' => $fact_id]);
+                        $orden_id = $query_orden_id->fetchColumn();
+                
+                        if (!$orden_id) {
+                            throw new Exception("No se encontró el orden_id asociado al fact_id: $fact_id");
+                        }
+                
+                        // Paso 3: Obtener los detalles originales desde `orden_detalle_compras`
+                        $query_detalles = $pdo->prepare(
+                            "SELECT od.cod_producto, od.orden_cantidad, od.orden_precio, p.iva_id
+                             FROM orden_detalle_compras od
+                             INNER JOIN producto p ON od.cod_producto = p.cod_producto
+                             WHERE od.orden_id = :orden_id"
+                        );
+                        $query_detalles->execute(['orden_id' => $orden_id]);
+                        $detalles = $query_detalles->fetchAll(PDO::FETCH_ASSOC);
+                
+                        if (empty($detalles)) {
+                            throw new Exception("No se encontraron detalles en orden_detalle_compras para el orden_id: $orden_id");
+                        }
+                
+                        // Inicializar variables para el cálculo
+                        $nuevo_total = 0;
+                        $iva_5_total = 0;
+                        $iva_10_total = 0;
+                
+                        // Paso 4: Recalcular el monto total y el IVA
+                        foreach ($detalles as $detalle) {
+                            $cod_producto = $detalle['cod_producto'];
+                            $orden_cantidad = intval($detalle['orden_cantidad']);
+                            $precio = floatval($detalle['orden_precio']);
+                            $iva_id = intval($detalle['iva_id']);
+                
+                            // Calcular el subtotal del producto
+                            $subtotal = $orden_cantidad * $precio;
+                            $nuevo_total += $subtotal;
+                
+                            // Calcular IVA según el tipo
+                            $iva_producto_unitario = 0;
+                            $iva_producto_total = 0;
+                            if ($iva_id == 1) { // IVA 5%
+                                $iva_producto_unitario = (int)($precio / 21);
+                                $iva_producto_total = (int)($subtotal / 21);
+                                $iva_5_total += $iva_producto_total;
+                            } elseif ($iva_id == 2) { // IVA 10%
+                                $iva_producto_unitario = (int)($precio / 11);
+                                $iva_producto_total = (int)($subtotal / 11);
+                                $iva_10_total += $iva_producto_total;
+                            }
+                
+                            // Actualizar el precio unitario e IVA unitario en `facturas_detalle_compra`
+                            $query_update_precio_iva = $pdo->prepare(
+                                "UPDATE facturas_detalle_compra
+                                 SET fact_precio = :precio_unitario
+                                 WHERE fact_id = :fact_id AND cod_producto = :cod_producto"
+                            );
+                            $query_update_precio_iva->execute([
+                                'precio_unitario' => $precio,
+                                'fact_id' => $fact_id,
+                                'cod_producto' => $cod_producto,
+                            ]);
+                        }
+                
+                        // Sumar el IVA total al nuevo total
+                        $nuevo_total += $iva_5_total + $iva_10_total;
+                
+                        // Paso 5: Actualizar el IVA total en `iva_compras`
+                        $query_update_iva = $pdo->prepare("UPDATE iva_compras SET iva_5 = :iva_5_total, iva_10 = :iva_10_total WHERE fact_id = :fact_id");
+                        $query_update_iva->execute([
+                            'iva_5_total' => $iva_5_total,
+                            'iva_10_total' => $iva_10_total,
+                            'fact_id' => $fact_id,
+                        ]);
+                
+                        // Paso 6: Actualizar el total en `facturas_compra`
+                        $query_update_factura = $pdo->prepare("UPDATE facturas_compra SET fact_total = :nuevo_total, fact_estado = 'FINALIZADO' WHERE fact_id = :fact_id");
+                        $query_update_factura->execute([
+                            'nuevo_total' => $nuevo_total,
+                            'fact_id' => $fact_id,
+                        ]);
+                
+                        // Paso 7: Actualizar el total en `cuenta_pagar`
+                        $query_update_cta_pagar = $pdo->prepare("UPDATE cuenta_pagar SET cta_total = :nuevo_total, estado = 'FINALIZADO' WHERE fact_id = :fact_id");
+                        $query_update_cta_pagar->execute([
+                            'nuevo_total' => $nuevo_total,
+                            'fact_id' => $fact_id,
+                        ]);
+                
+                        // Confirmar la transacción
+                        $pdo->commit();
+                
+                        // Redirigir con mensaje de éxito
+                        header("Location: view.php?alert=3");
+                        exit();
+                    } catch (Exception $e) {
+                        // Revertir la transacción en caso de error
+                        $pdo->rollBack();
+                        die("Error: " . $e->getMessage());
+                    }
+                
+
+            case 5: // agregar nuevamente los productos al stock que fueron devueltos en su momento
+                try {
+                    // Inicia una transacción
+                    $pdo->beginTransaction();
+            
+                    // Paso 1: Obtener el `fact_id` desde `notas_compra` usando el `nota_id`
                     $query_fact_id = $pdo->prepare("
                         SELECT fact_id 
                         FROM notas_compra 
@@ -488,15 +709,7 @@ if ($_GET['act'] == 'anular_nota_credito') {
                         throw new Exception("No se encontró el orden_id asociado al fact_id: $fact_id");
                     }
             
-                    // Paso 3: Resetear las cantidades a 0 en `facturas_detalle_compra`
-                    $query_reset_cantidad = $pdo->prepare("
-                        UPDATE facturas_detalle_compra
-                        SET fact_cantidad = 0
-                        WHERE fact_id = :fact_id
-                    ");
-                    $query_reset_cantidad->execute(['fact_id' => $fact_id]);
-            
-                    // Paso 4: Obtener los detalles originales desde `orden_detalle_compras`
+                    // Paso 3: Obtener los detalles originales desde `orden_detalle_compras`
                     $query_detalles = $pdo->prepare("
                         SELECT od.cod_producto, od.orden_cantidad, od.orden_precio, p.iva_id
                         FROM orden_detalle_compras od
@@ -510,64 +723,32 @@ if ($_GET['act'] == 'anular_nota_credito') {
                         throw new Exception("No se encontraron detalles en orden_detalle_compras para el orden_id: $orden_id");
                     }
             
-                    // Inicializar variables para el cálculo
-                    $nuevo_total = 0;
-                    $iva_5_total = 0;
-                    $iva_10_total = 0;
-            
-                    // Paso 5: Restaurar las cantidades en `facturas_detalle_compra` y recalcular
+                    // Paso 4: Recuperar las cantidades al stock
                     foreach ($detalles as $detalle) {
                         $cod_producto = $detalle['cod_producto'];
                         $orden_cantidad = intval($detalle['orden_cantidad']);
                         $precio = floatval($detalle['orden_precio']);
-                        $iva_id = intval($detalle['iva_id']);
+                        $iva_id = intval($detalle['iva_id']); 
             
-                        // Restaurar la cantidad en `facturas_detalle_compra`
-                        $query_update_cantidad = $pdo->prepare("
-                            UPDATE facturas_detalle_compra
-                            SET fact_cantidad = :orden_cantidad
-                            WHERE fact_id = :fact_id AND cod_producto = :cod_producto
+                        // Actualizar el stock, aumentando el stock de los productos que fueron devueltos
+                        $query_update_stock = $pdo->prepare("
+                            UPDATE stock
+                            SET stock_existencia = stock_existencia + :cantidad
+                            WHERE cod_producto = :cod_producto
                         ");
-                        $query_update_cantidad->execute([
-                            'orden_cantidad' => $orden_cantidad,
-                            'fact_id' => $fact_id,
+                        $query_update_stock->execute([
+                            'cantidad' => $orden_cantidad,
                             'cod_producto' => $cod_producto,
                         ]);
             
-                        // Calcular subtotales e IVA
-                        $subtotal = $orden_cantidad * $precio; // Subtotal del producto
-                        $iva_producto_unitario = 0; // IVA unitario para el producto
-                        $iva_producto_total = 0; // IVA total para todas las unidades del producto
+
                         
-                        if ($iva_id == 1) { // IVA 5%
-                            $iva_producto_unitario = $precio / 21; // Cálculo del IVA para una unidad
-                            $iva_producto_total = $subtotal / 21; // Cálculo del IVA total (subtotal/21)
-                            $iva_5_total += $iva_producto_total; // Acumular IVA 5%
-                        } elseif ($iva_id == 2) { // IVA 10%
-                            $iva_producto_unitario = $precio / 11; // Cálculo del IVA para una unidad
-                            $iva_producto_total = $subtotal / 11; // Cálculo del IVA total (subtotal/11)
-                            $iva_10_total += $iva_producto_total; // Acumular IVA 10%
-                        }
-            
-                        // Sumar el subtotal al total general
-                        $nuevo_total += $subtotal;
-            
-                        // Actualizar el precio unitario e IVA en `facturas_detalle_compra`
-                        $query_update_precio_iva = $pdo->prepare("
-                            UPDATE facturas_detalle_compra
-                            SET 
-                                fact_precio = :precio_unitario,
-                                fact_iva = :iva_unitario
-                            WHERE fact_id = :fact_id AND cod_producto = :cod_producto
-                        ");
-                        $query_update_precio_iva->execute([
-                            'precio_unitario' => $precio,
-                            'iva_unitario' => $iva_producto_total,
-                            'fact_id' => $fact_id,
-                            'cod_producto' => $cod_producto,
-                        ]);
                     }
             
+                    // Tomar solo la parte entera del total de IVA
+                    $iva_5_total = (int)$iva_5_total; 
+                    $iva_10_total = (int)$iva_10_total;                    
+
                     // Paso 6: Actualizar el IVA total en `iva_compras`
                     $query_update_iva = $pdo->prepare("
                         UPDATE iva_compras
@@ -581,87 +762,88 @@ if ($_GET['act'] == 'anular_nota_credito') {
                         'iva_10_total' => $iva_10_total,
                         'fact_id' => $fact_id,
                     ]);
-            
-                    // Paso 7: Actualizar el total en `facturas_compra`
+
+                    // Paso 7: Actualizar el estado en `facturas_compra`
                     $query_update_factura = $pdo->prepare("
                         UPDATE facturas_compra
-                        SET fact_total = :nuevo_total, fact_estado = 'FINALIZADO'
+                        SET fact_estado = 'FINALIZADO'
                         WHERE fact_id = :fact_id
                     ");
                     $query_update_factura->execute([
-                        'nuevo_total' => $nuevo_total,
                         'fact_id' => $fact_id,
                     ]);
-            
-                    // Paso 8: Actualizar el total en `cuenta_pagar`
+
+                    // Paso 8: Actualizar el estado en `cuenta_pagar`
                     $query_update_cta_pagar = $pdo->prepare("
                         UPDATE cuenta_pagar
-                        SET cta_total = :nuevo_total, estado = 'FINALIZADO'
+                        SET estado = 'FINALIZADO'
                         WHERE fact_id = :fact_id
                     ");
                     $query_update_cta_pagar->execute([
-                        'nuevo_total' => $nuevo_total,
                         'fact_id' => $fact_id,
                     ]);
+            
+                    // Paso 9: Cambiar estados de tablas relacionadas a "FINALIZADO"
+                    $query_update_orden = $pdo->prepare("
+                        UPDATE orden_compras
+                        SET orden_estado = 'FINALIZADO'
+                        WHERE orden_id = :orden_id
+                    ");
+                    $query_update_orden->execute(['orden_id' => $orden_id]);
+
+                    $query_presupuesto_id = $pdo->prepare("
+                        SELECT presupuesto_id 
+                        FROM orden_compras 
+                        WHERE orden_id = :orden_id
+                    ");
+                    $query_presupuesto_id->execute(['orden_id' => $orden_id]);
+                    $presupuesto_id = $query_presupuesto_id->fetchColumn();
+
+                    if ($presupuesto_id) {
+                        $query_update_presupuesto = $pdo->prepare("
+                            UPDATE presupuesto_compra
+                            SET pre_estado = 'FINALIZADO'
+                            WHERE presupuesto_id = :presupuesto_id
+                        ");
+                        $query_update_presupuesto->execute(['presupuesto_id' => $presupuesto_id]);
+
+                        $query_pedido_id = $pdo->prepare("
+                            SELECT pedido_id 
+                            FROM presupuesto_compra 
+                            WHERE presupuesto_id = :presupuesto_id
+                        ");
+                        $query_pedido_id->execute(['presupuesto_id' => $presupuesto_id]);
+                        $pedido_id = $query_pedido_id->fetchColumn();
+
+                        if ($pedido_id) {
+                            $query_update_pedido = $pdo->prepare("
+                                UPDATE pedidos_compras
+                                SET estado = 'FINALIZADO'
+                                WHERE pedido_id = :pedido_id
+                            ");
+                            $query_update_pedido->execute(['pedido_id' => $pedido_id]);
+                        }
+                    }
             
                     // Confirmar la transacción
                     $pdo->commit();
             
                     // Redirigir con mensaje de éxito
-                    header("Location: view.php?alert=3");
+                    header("Location: view.php?alert=1");
                     exit();
-            
                 } catch (Exception $e) {
                     // Revertir la transacción en caso de error
                     $pdo->rollBack();
-                    echo "Error: " . $e->getMessage();
+                    die("Error: " . $e->getMessage());
                 }
-            
                 break;
             
-            
-            
 
-            case 2: // Descuentos aplicados posteriormente
-                echo "Motivo: Descuentos aplicados posteriormente<br>";
-                // Lógica específica para descuentos
-                // Ejemplo: Registrar en una tabla de ajustes
-                $query_registrar_descuento = $pdo->prepare("
-                    INSERT INTO ajustes_descuentos (fact_id, monto, descripcion)
-                    VALUES (:fact_id, :nota_total, 'Descuento aplicado por anulación de nota de crédito')
-                ");
-                $query_registrar_descuento->execute([
-                    'fact_id' => $fact_id,
-                    'nota_total' => $nota_total
-                ]);
-                echo "Descuento registrado en la tabla de ajustes.<br>";
-                break;
-                
+
+                default:
 
 
 
-
-
-
-            case 5: // Devolución de todos los productos
-                echo "Motivo: Devolución de todos los productos<br>";
-                // Lógica específica para devolución total
-                // Ejemplo: Actualizar múltiples inventarios
-                $query_update_inventario_total = $pdo->prepare("
-                    UPDATE producto
-                    SET stock = stock + :nota_total
-                    WHERE fact_id = :fact_id
-                ");
-                $query_update_inventario_total->execute([
-                    'nota_total' => $nota_total,
-                    'fact_id' => $fact_id
-                ]);
-                echo "Inventario actualizado para devolución de todos los productos.<br>";
-                break;
-
-            default:
-                echo "Motivo no reconocido.<br>";
-                break;
         }
 
         // Redirigir con mensaje de éxito

@@ -172,6 +172,49 @@ if (isset($_GET['form_pedido_compra']) && $_GET['form'] == 'add') { ?>
             document.getElementById('productos').value = JSON.stringify(productos);
         }
     });
+
+    // vaidación para el boton agregar
+    const btnAgregar = document.getElementById('btn-agregar');
+    const cantidadProductoInput = document.getElementById('cantidad_producto');
+
+    // Validar que la cantidad no sea menor a 1
+    cantidadProductoInput.addEventListener('input', function () {
+        const cantidad = parseInt(this.value);
+        if (isNaN(cantidad) || cantidad < 1) {
+            btnAgregar.disabled = true;
+        } else {
+            btnAgregar.disabled = false;
+        }
+    });
+
+    // Validación en el evento click del botón "Agregar"
+    btnAgregar.addEventListener('click', function () {
+        const producto = document.getElementById('producto');
+        const cantidadProducto = parseInt(cantidadProductoInput.value);
+
+        if (producto.value && cantidadProducto >= 1) {
+            // Agregar fila a la tabla
+            const row = `
+                <tr>
+                    <td>${productos.length + 1}</td>
+                    <td>${producto.value}</td>
+                    <td>${producto.options[producto.selectedIndex].text}</td>
+                    <td>${cantidadProducto}</td>
+                    <td><button type="button" class="btn btn-danger btn-sm btn-eliminar">Quitar</button></td>
+                </tr>`;
+            tablaProductos.innerHTML += row;
+
+            // Agregar producto al arreglo
+            productos.push({ codigo: producto.value, cantidad: cantidadProducto });
+            document.getElementById('productos').value = JSON.stringify(productos);
+
+            // Limpiar campos
+            producto.value = '';
+            cantidadProductoInput.value = '';
+            btnAgregar.disabled = true; // Deshabilitar el botón después de agregar
+        } 
+    });
+
 </script>
 
 

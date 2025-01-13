@@ -5,12 +5,12 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
 <div class="container-fluid">
     
     <h1 class="h3 mb-4 text-gray-800">
-        <i class="fas fa-plus-circle"></i> Registrar Nota de Crédito
+        <i class="fas fa-plus-circle"></i> Registrar Nota de Débito
     </h1>
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="../../index.php">Inicio</a></li>
-        <li class="breadcrumb-item"><a href="view.php">Notas de Crédito</a></li>
-        <li class="breadcrumb-item active">Nueva Nota de Crédito</li>
+        <li class="breadcrumb-item"><a href="view.php">Notas de Débito</a></li>
+        <li class="breadcrumb-item active">Nueva Nota de Débito</li>
     </ol>
 
     <div class="card shadow mb-4">
@@ -23,13 +23,13 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                     $pdo = new PDO($dsn, $user, $pass);
                     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                    $query = $pdo->query("SELECT MAX(nota_id) AS id FROM notas_compra");
+                    $query = $pdo->query("SELECT MAX(nota_debito_id) AS id FROM nota_debito");
                     $data = $query->fetch(PDO::FETCH_ASSOC);
 
                     $codigo = ($data['id'] !== null) ? $data['id'] + 1 : 1;
                     date_default_timezone_set('America/Asuncion');
                     $fecha = date("Y-m-d"); // Formato: YYYY-MM-DD (año:mes:dia)
-                    $hora = date("H:i:s"); // Formato: hh:mm:ss AM/PM (hora:minutos)
+                    $hora = date("H:i "); // Formato: hh:mm:ss AM/PM (hora:minutos)
                 } catch (PDOException $e) {
                     die("Error: " . $e->getMessage());
                 }
@@ -64,6 +64,7 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                             }
                             ?>
                         </select>
+                        <input type="hidden" id="hidden_fact_id" name="fact_id">
                     </div>
 
                     <div class="col-md-4">
@@ -71,13 +72,21 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                         <select class="form-control" id="motivo_id" name="motivo_id" required>
                             <option value="" selected>Seleccione un motivo</option>
                             <?php
-                            $query_motivos = $pdo->query("SELECT motivo_id, motivo_descripcion FROM motivo ORDER BY motivo_id ASC");
+                            $query_motivos = $pdo->query("SELECT motivo_id, motivo_descripcion FROM motivo_debito ORDER BY motivo_id ASC");
                             while ($motivo = $query_motivos->fetch(PDO::FETCH_ASSOC)) {
                                 echo "<option value=\"{$motivo['motivo_id']}\">{$motivo['motivo_descripcion']}</option>";
                             }
                             ?>
                         </select>
+                        <input type="hidden" id="hidden_motivo_id" name="motivo_id">
                     </div>
+
+                    <div class="col-md-4">
+                        <label for="nota_cargo" class="form-label">Cargo adicional</label>
+                        <input type="text" class="form-control" id="nota_cargo" name="nota_cargo"
+                            placeholder="Ingrese el monto del cargo adicional." required>
+                    </div>
+
 
 
                 </div>
@@ -85,18 +94,10 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label for="nota_nro" class="form-label">Número de Nota</label>
-                        <input type="number" class="form-control" id="nota_nro" name="nota_nro" 
-                            placeholder="Ingrese el número de la nota" 
-                            min="1" max="9" 
-                            onkeypress="return event.charCode >= 49 && event.charCode <= 57" 
-                            required>
+                        <input type="text" class="form-control" id="nota_nro" name="nota_nro"
+                            placeholder="Ingrese el número de la nota" required>
                     </div>
 
-
-                    <div class="col-md-4">
-                        <label for="nota_timbrado" class="form-label">Timbrado</label>
-                        <input type="text" class="form-control" id="nota_timbrado" name="nota_timbrado" placeholder="Ingrese el timbrado" required onkeypress="return validarTimbrado(event)">
-                    </div>
                 </div>
 
                 <div class="row mb-3">
@@ -118,7 +119,7 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                                 <th>Cantidad</th>
                                 <th>Precio</th>
                                 <th>Subtotal</th>
-                                <th>Monto IVA</th>
+                                <th>Monoto IVA</th>
                                 <th>IVA</th>
                                 <th>Acción</th>
                             </tr>
@@ -134,13 +135,13 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label for="nota_total" class="form-label">Monto Total</label>
-                        <input type="text" class="form-control" id="nota_total" name="nota_total" readonly>
+                        <input type="number" class="form-control" id="nota_total" name="nota_total" readonly>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end">
                     <button type="submit" class="btn btn-success mx-2" id="btn-guardar">Guardar</button>
-                    <a href="../../modules/nota_credito/view.php" class="btn btn-danger mx-2" id="cancelar">Cancelar</a>
+                    <a href="../../modules/nota_debito/view.php" class="btn btn-danger mx-2" id="cancelar">Cancelar</a>
                 </div>
             </form>
         </div>
@@ -149,6 +150,7 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
 
 <!-- Script para manejar la carga de datos de la factura -->
 <script>
+// Evento para cargar los detalles de la factura al seleccionar una factura
 document.getElementById('fact_id').addEventListener('change', async function () {
     const facturaId = this.value;
 
@@ -199,12 +201,10 @@ document.getElementById('fact_id').addEventListener('change', async function () 
             tbody.insertAdjacentHTML('beforeend', row);
         });
 
-
-        document.getElementById('nota_total').value = total.toFixed(2);
-
+        // Calcular el total general con IVA
         calcularTotales();
 
-        // Deshabilitar el campo de factura y habilitar el siguiente
+        // Deshabilitar el campo de factura y habilitar el siguiente campo
         this.setAttribute('disabled', 'disabled'); // Deshabilitar fact_id
         document.getElementById('motivo_id').removeAttribute('disabled'); // Habilitar motivo_id
         document.getElementById('motivo_id').focus(); // Enfocar motivo_id
@@ -213,7 +213,6 @@ document.getElementById('fact_id').addEventListener('change', async function () 
         alert('Ocurrió un error al intentar cargar los detalles de la factura.');
     }
 });
-
 
 
 
@@ -277,6 +276,7 @@ async function validarCantidadYHabilitarBoton() {
 function calcularTotales() {
     let total = 0;
 
+    // Recorre cada fila de la tabla para calcular los valores
     document.querySelectorAll('#tabla-factura-detalles tbody tr').forEach(row => {
         const cantidad = parseFloat(row.querySelector('.cantidad').value) || 0;
         const precio = parseFloat(row.querySelector('.precio').value) || 0;
@@ -291,26 +291,21 @@ function calcularTotales() {
             montoIva = Math.floor(precio / 21);
         }
 
+        // Calcular Subtotal y Monto IVA total
         const subtotal = cantidad * precio;
         const totalIva = montoIva * cantidad;
 
-        // Actualizar el Monto IVA en la fila
-        row.querySelector('.monto-iva').textContent = totalIva.toFixed(2);
+        // Actualizar los valores en la fila
         row.querySelector('.subtotal').textContent = subtotal.toFixed(2);
-
+        row.querySelector('.monto-iva').textContent = totalIva.toFixed(2);
 
         // Sumar al total general
         total += subtotal + totalIva;
     });
 
-    // Actualizar el total general
+    // Actualizar el total general en el formulario
     document.getElementById('nota_total').value = total.toFixed(2);
 }
-
-
-
-
-
 
 
 
@@ -351,17 +346,21 @@ document.querySelector('#tabla-factura-detalles').addEventListener('click', func
 // Función para limpiar los campos del formulario
 function limpiarCamposFormulario() {
     // Limpiar select de factura
-    document.getElementById('fact_id').value = "";
+    const factIdField = document.getElementById('fact_id');
+    factIdField.value = "";
+    factIdField.removeAttribute('disabled'); // Habilitar el campo de factura
+    factIdField.focus(); // Enfocar el campo de factura
 
     // Limpiar select de motivo
     document.getElementById('motivo_id').value = "";
+    document.getElementById('motivo_id').setAttribute('disabled', 'disabled'); // Deshabilitar el combo "Motivo"
 
     // Limpiar campos de texto
+    document.getElementById('nota_cargo').value = "";
     document.getElementById('nota_nro').value = "";
-    document.getElementById('nota_timbrado').value = "";
     document.getElementById('nota_inicio').value = "";
     document.getElementById('nota_vto').value = "";
-    document.getElementById('nota_total').value = "";
+    document.getElementById('nota_total').value = "0.00";
 
     // Deshabilitar los campos
     disableAllFields();
@@ -370,6 +369,7 @@ function limpiarCamposFormulario() {
 // Función para deshabilitar todos los campos excepto la factura
 function disableAllFields() {
     document.getElementById('motivo_id').setAttribute('disabled', 'disabled');
+    document.getElementById('nota_cargo').setAttribute('readonly', 'readonly');
     document.getElementById('nota_nro').setAttribute('readonly', 'readonly');
     document.getElementById('nota_timbrado').setAttribute('readonly', 'readonly');
     document.getElementById('nota_inicio').setAttribute('readonly', 'readonly');
@@ -414,6 +414,7 @@ document.getElementById('form-nota-credito').addEventListener('submit', function
         }
     });
 
+    
     if (cantidadInvalida) {
         e.preventDefault(); // Evitar el envío del formulario
         alert('Si desea devolver todos los productos, seleccione "Devolución de todos los productos" como motivo.');
@@ -435,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const factIdField = document.getElementById('fact_id');
     const motivoField = document.getElementById('motivo_id');
     const notaNroField = document.getElementById('nota_nro');
-    const timbradoField = document.getElementById('nota_timbrado');
+    const cargoField = document.getElementById('nota_cargo');
     const inicioField = document.getElementById('nota_inicio');
     const vtoField = document.getElementById('nota_vto');
     const tablaDetalles = document.querySelector('#tabla-factura-detalles tbody');
@@ -443,8 +444,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Función para deshabilitar campos
     function disableAllFields() {
         motivoField.setAttribute('disabled', 'disabled');
+        cargoField.setAttribute('readonly', 'readonly');
         notaNroField.setAttribute('readonly', 'readonly');
-        timbradoField.setAttribute('readonly', 'readonly');
+        
         inicioField.setAttribute('readonly', 'readonly');
         vtoField.setAttribute('readonly', 'readonly');
         disableCantidadYPrecio();
@@ -475,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
     factIdField.removeAttribute('readonly'); // Habilitar el campo de factura
     factIdField.focus(); // Enfocar el campo de factura
 
-    /* Al seleccionar una factura
+    /*/ Al seleccionar una factura
     factIdField.addEventListener('change', async function () {
         const facturaId = this.value;
         if (!facturaId) return;
@@ -514,109 +516,110 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Ocurrió un error al intentar cargar los detalles de la factura.');
         }
     });
-*/
 
-// Al seleccionar una factura
-factIdField.addEventListener('change', async function () {
-    const facturaId = this.value;
-    if (!facturaId) return;
-
-    try {
-        // Llamada a la API para obtener detalles de la factura
-        const response = await fetch(`get_pedido_detalle.php?fact_id=${facturaId}`);
-        const detalles = await response.json();
-
-        // Limpiar la tabla antes de cargar nuevos detalles
-        tablaDetalles.innerHTML = '';
-
-        // Rellenar la tabla con los datos traídos de la API
-        detalles.forEach(detalle => {
-            const row = `
-                <tr>
-                    <td>${detalle.producto}</td>
-                    <td>
-                        <input type="number" class="form-control cantidad" 
-                            value="${detalle.cantidad}" 
-                            data-codigo="${detalle.codigo}" readonly />
-                    </td>
-                    <td>
-                        <input type="number" class="form-control precio" 
-                            value="${detalle.precio}" 
-                            data-codigo="${detalle.codigo}" readonly />
-                    </td>
-                    <td class="subtotal">0.00</td> <!-- Inicializamos con 0.00 -->
-                    <td class="monto-iva">0.00</td> <!-- Inicializamos con 0.00 -->
-                    <td>${detalle.iva} %</td>
-                    <td><button type="button" class="btn btn-danger btn-sm btn-quitar">Quitar</button></td>
-                </tr>`;
-            tablaDetalles.insertAdjacentHTML('beforeend', row);
-        });
-
-        // Llamar a calcularTotales para actualizar los valores de Subtotal, Monto IVA y Total
-        calcularTotales();
-
-        // Deshabilitar los campos de cantidad y precio por defecto
-        disableCantidadYPrecio();
-
-        // Habilitar el siguiente campo
-        enableField(motivoField);
-    } catch (error) {
-        console.error('Error al cargar detalles de la factura:', error);
-        alert('Ocurrió un error al intentar cargar los detalles de la factura.');
-    }
-});
-
-
+    */
 
     // Al seleccionar un motivo
     motivoField.addEventListener('change', function () {
-        if (motivoField.value === '1') { // Suponiendo que '1' es el ID para "Devolución de productos"
-            enableCantidad(); // Habilitar solo la cantidad
-            validarCantidadYHabilitarBoton();
-        } else if (motivoField.value === '5') {
-                // Si el motivo es "Devolución de todos los productos", mantener cantidad y precio deshabilitados
+        const cargoField = document.getElementById('nota_cargo');
+        const notaNroField = document.getElementById('nota_nro');
+        
+        if (motivoField.value === '2') { // '2' es el ID para "correción de errores"
+            enablePrecio(); // Habilitar solo la cantidad
+            //validarCantidadYHabilitarBoton();
+            validarPrecioUnitario();
+            cargoField.setAttribute('readonly', 'readonly'); // Deshabilitar el campo "Cargo adicional"
+            notaNroField.removeAttribute('readonly');
+            notaNroField.focus(); // Pasar el foco al siguiente campo si no es "Cargo adicional"
+        } else if (motivoField.value === '1') {
+                // Si el motivo es "cargo adicional"
                 disableCantidadYPrecio();
+                cargoField.removeAttribute('readonly');
+                cargoField.focus();
+
+                // Al presionar Enter en el campo "Cargo adicional", pasar el foco a "Número de Nota"
+                document.getElementById('nota_cargo').addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault(); // Evitar el envío del formulario
+                        document.getElementById('nota_nro').focus(); // Pasar el foco a "Número de Nota"
+                    }
+                });   
+
+                document.getElementById('nota_cargo').addEventListener('change', function () {
+                    if (this.value.trim() !== '') {
+                        enableNextAndDisableCurrent(this, document.getElementById('nota_nro')); // Número de Nota -> Timbrado
+                    }
+                });
             } else {
                 // De lo contrario, habilitar cantidad y precio
                 enableCantidadYPrecio();
             }
             motivoField.setAttribute('disabled', 'disabled'); // Deshabilitar motivo_id
-        enableField(notaNroField); // Habilitar el campo "Número de Nota"
+        //enableField(notaNroField); // Habilitar el campo "Número de Nota"
     });
 
-    // Función para habilitar solo las cantidades
-    function enableCantidad() {
-        tablaDetalles.querySelectorAll('.cantidad').forEach(input => {
+    //Actualizar el valor de los campos ocultos al seleccionar una opción
+    document.getElementById('fact_id').addEventListener('change', function () {
+        const selectedValue = this.value;
+        document.getElementById('hidden_fact_id').value = selectedValue;
+        this.setAttribute('disabled', 'disabled'); // Deshabilitar el select para evitar cambios
+    });
+
+    document.getElementById('motivo_id').addEventListener('change', function () {
+        const selectedValue = this.value;
+        document.getElementById('hidden_motivo_id').value = selectedValue;
+        this.setAttribute('disabled', 'disabled'); // Deshabilitar el select para evitar cambios
+    });
+
+
+
+
+    // Función para habilitar la cantidad y el precio
+    function enablePrecio() {
+        // Habilitar solo el campo de precio
+        document.querySelectorAll('#tabla-factura-detalles .precio').forEach(input => {
             input.removeAttribute('readonly');
         });
-        tablaDetalles.querySelectorAll('.precio').forEach(input => {
-            input.setAttribute('readonly', 'readonly'); // Asegurarse de que el precio permanezca deshabilitado
+
+        // Asegurarse de que los campos de cantidad permanezcan deshabilitados
+        document.querySelectorAll('#tabla-factura-detalles .cantidad').forEach(input => {
+            input.removeAttribute('readonly');
         });
     }
 
     // Secuencia de habilitación de campos
     // Validar y habilitar el siguiente campo al presionar Enter en "Número de Nota"
-    notaNroField.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' && notaNroField.value.trim() !== '') {
+    // Función para habilitar campos de manera secuencial
+    document.getElementById('nota_nro').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && this.value.trim() !== '') {
             event.preventDefault(); // Evitar el envío del formulario
-            enableField(timbradoField); // Habilitar el campo "Timbrado"
+            enableNextAndDisableCurrent(this, document.getElementById('nota_inicio')); // Número de Nota -> Fecha de Inicio
         }
     });
 
-    // Validar y habilitar el siguiente campo al presionar Enter en "Timbrado"
-    timbradoField.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' && timbradoField.value.trim() !== '') {
-            event.preventDefault(); // Evitar el envío del formulario
-            enableField(inicioField); // Habilitar el campo "Fecha de Inicio"
+    // Habilitar campo "Fecha de Vencimiento" después de ingresar la fecha de inicio
+    document.getElementById('nota_inicio').addEventListener('change', function () {
+        if (this.value.trim() !== '') {
+            enableNextAndDisableCurrent(this, document.getElementById('nota_vto')); // Fecha de Inicio -> Fecha de Vencimiento
         }
     });
 
+    // Deshabilitar el campo "Fecha de Vencimiento" después de ingresar la fecha
+    document.getElementById('nota_vto').addEventListener('change', function () {
+        if (this.value.trim() !== '') {
+            this.setAttribute('readonly', 'readonly'); // Deshabilitar el campo "Fecha de Vencimiento"
+            document.getElementById('btn-guardar').focus(); // Enfocar el botón Guardar
+        }
+    });
+
+    
+/*
     inicioField.addEventListener('change', function () {
         if (inicioField.value) {
             enableField(vtoField);
         }
     });
-
+*/
 
 
 
@@ -629,12 +632,14 @@ factIdField.addEventListener('change', async function () {
         nextField.focus(); // Enfocar el siguiente campo
     }
 
-    // Secuencia de habilitación de campos
+    /* Secuencia de habilitación de campos
     document.getElementById('motivo_id').addEventListener('change', function () {
         if (this.value) {
             enableNextAndDisableCurrent(this, document.getElementById('nota_nro')); // Motivo -> Número de Nota
         }
     });
+    */
+
 
     document.getElementById('nota_nro').addEventListener('change', function () {
         if (this.value.trim() !== '') {
@@ -663,80 +668,122 @@ factIdField.addEventListener('change', async function () {
 
 
     document.getElementById('form-nota-credito').addEventListener('submit', function () {
-    const factIdField = document.getElementById('fact_id');
-    const motivoIdField = document.getElementById('motivo_id');
-    
-    // Reactivar ambos campos antes de enviar el formulario
-    factIdField.removeAttribute('disabled'); 
-    motivoIdField.removeAttribute('disabled');
+        //const factIdField = document.getElementById('fact_id');
+        //const motivoIdField = document.getElementById('motivo_id');
+
+        // Reactivar los campos antes de enviar el formulario
+        factIdField.removeAttribute('disabled');
+        motivoIdField.removeAttribute('disabled');
+    });
+
+
+
+
+
 });
 
 
+// Función para validar que solo se permitan números del 1 al 9 y la tecla Enter
+function validarNumero(e) {
+    const tecla = e.key;
 
-
-});
-
-// Obtener los elementos de los campos de fecha
-const fechaInicio = document.getElementById('nota_inicio');
-const fechaVto = document.getElementById('nota_vto');
-
-// Establecer la fecha mínima para "Fecha de Inicio" como la fecha actual
-const today = new Date().toISOString().split('T')[0];
-fechaInicio.setAttribute('min', today);
-
-// Validar que "Fecha de Vencimiento" sea mayor o igual que "Fecha de Inicio"
-fechaInicio.addEventListener('change', function () {
-    // Ajustar la fecha mínima de "Fecha de Vencimiento" según "Fecha de Inicio"
-    fechaVto.setAttribute('min', fechaInicio.value);
-
-    // Limpiar el campo "Fecha de Vencimiento" si su valor es menor que "Fecha de Inicio"
-    if (fechaVto.value && fechaVto.value < fechaInicio.value) {
-        fechaVto.value = '';
-    }
-});
-
-fechaVto.addEventListener('change', function () {
-    // Validar que "Fecha de Vencimiento" sea mayor o igual que "Fecha de Inicio"
-    if (fechaVto.value < fechaInicio.value) {
-        alert('La fecha "Fecha de Vencimiento" debe ser mayor o igual que "Fecha de Inicio".');
-        fechaVto.value = '';
-    }
-});
-
-
-
-function limpiarFormulario() {
-    // Limpiar los campos de texto excepto "Fecha", "Hora" y "Nota ID"
-    document.getElementById('fact_id').selectedIndex = 0;
-    document.getElementById('motivo_id').selectedIndex = 0;
-    document.getElementById('nota_nro').value = '';
-    document.getElementById('nota_timbrado').value = '';
-    document.getElementById('nota_inicio').value = '';
-    document.getElementById('nota_vto').value = '';
-    document.getElementById('nota_total').value = '';
-
-    // Limpiar la tabla de detalles de la factura
-    const tablaDetalles = document.querySelector('#tabla-factura-detalles tbody');
-    if (tablaDetalles) {
-        tablaDetalles.innerHTML = '';
+    // Permitir solo números del 1 al 9 y la tecla Enter
+    if (!/^[1-9]$/.test(tecla) && tecla !== 'Enter') {
+        e.preventDefault();
     }
 }
 
-// Ejecutar la función al cargar la página
-window.onload = limpiarFormulario;
+// Validar el campo "Número de Nota"
+const inputNotaNro = document.getElementById('nota_nro');
+inputNotaNro.addEventListener('keypress', validarNumero);
+
+// Validar el campo "Cargo Adicional"
+const inputNotaCargo = document.getElementById('nota_cargo');
+inputNotaCargo.addEventListener('keypress', validarNumero);
 
 
-function validarTimbrado(event) {
-        const charCode = event.which ? event.which : event.keyCode;
-        const charStr = String.fromCharCode(charCode);
 
-        // Permitir solo números, guión y Enter
-        if (/^[0-9-]+$/.test(charStr) || charCode === 13) {
-            return true; // Permite la entrada
+// Obtener los elementos de fecha
+const fechaInicio = document.getElementById('nota_inicio');
+    const fechaVencimiento = document.getElementById('nota_vto');
+
+    // Establecer la fecha mínima para "Fecha de Inicio" como la fecha actual
+    const today = new Date().toISOString().split('T')[0];
+    fechaInicio.setAttribute('min', today);
+
+    // Validar que "Fecha de Vencimiento" sea igual o mayor que "Fecha de Inicio"
+    fechaInicio.addEventListener('change', function () {
+        // Ajustar la fecha mínima de "Fecha de Vencimiento" según "Fecha de Inicio"
+        fechaVencimiento.setAttribute('min', fechaInicio.value);
+
+        // Limpiar "Fecha de Vencimiento" si su valor es menor que "Fecha de Inicio"
+        if (fechaVencimiento.value && fechaVencimiento.value < fechaInicio.value) {
+            fechaVencimiento.value = '';
+            alert('La fecha de vencimiento debe ser igual o posterior a la fecha de inicio.');
         }
+    });
 
-        return false; // Bloquea otros caracteres
+    fechaVencimiento.addEventListener('change', function () {
+        // Validar que "Fecha de Vencimiento" sea igual o mayor que "Fecha de Inicio"
+        if (fechaVencimiento.value < fechaInicio.value) {
+            alert('La fecha de vencimiento debe ser igual o posterior a la fecha de inicio.');
+            fechaVencimiento.value = '';
+        }
+    });
+
+
+async function validarPrecioUnitario() {
+    const facturaId = document.getElementById('fact_id').value;
+    const botonGuardar = document.getElementById('btn-guardar');
+
+    if (!facturaId) return;
+
+    try {
+        // Llamada a la API para obtener los precios originales
+        const response = await fetch(`get_pedido_detalle.php?fact_id=${facturaId}`);
+        const preciosOriginales = await response.json();
+
+        console.log('Precios originales:', preciosOriginales);
+
+        // Recorrer los inputs de precio en la tabla
+        document.querySelectorAll('#tabla-factura-detalles .precio').forEach(input => {
+            const codigoProducto = input.dataset.codigo;
+            const detalleOriginal = preciosOriginales.find(det => det.codigo == codigoProducto);
+
+            if (detalleOriginal) {
+                const precioOriginal = parseFloat(detalleOriginal.precio.replace(',', '').trim());
+                console.log(`Código Producto: ${codigoProducto}, Precio Original: ${precioOriginal}`);
+
+                // Escuchar cambios en el input
+                input.addEventListener('input', function () {
+                    const nuevoPrecio = parseFloat(this.value.replace(',', '').trim()) || 0;
+                    console.log(`Nuevo Precio Ingresado: ${nuevoPrecio}`);
+
+                    // Deshabilitar el botón "Guardar" si el precio es menor que el original
+                    if (nuevoPrecio < precioOriginal) {
+                        console.log('Botón deshabilitado');
+                        botonGuardar.setAttribute('disabled', 'disabled');
+                    } else {
+                        console.log('Botón habilitado');
+                        botonGuardar.removeAttribute('disabled');
+                    }
+                });
+            } else {
+                console.warn(`No se encontró el detalle original para el producto con código: ${codigoProducto}`);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al validar los precios unitarios:', error);
     }
+}
+
+
+
+
+
+
+
 
 
 </script>

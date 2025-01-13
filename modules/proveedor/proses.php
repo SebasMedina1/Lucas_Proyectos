@@ -24,10 +24,49 @@ else {
             // Agregar proveedor
             if ($action == 'insert' && isset($_POST['Guardar'])) {
                 $codigo = $_POST['codigo'];
-                $razon_social = $_POST['descrip_razon'];
-                $ruc = $_POST['descrip_ruc'];
-                $direccion = $_POST['descrip_direccion'];
-                $telefono = $_POST['descrip_telefono'];
+                $razon_social = trim($_POST['descrip_razon']);
+                $ruc = trim($_POST['descrip_ruc']);
+                $direccion = trim($_POST['descrip_direccion']);
+                $telefono = trim($_POST['descrip_telefono']);
+
+                // Validar si la Razón Social ya existe
+                $query_razon = $pdo->prepare("SELECT COUNT(*) FROM proveedor WHERE razon_social = :razon_social AND cod_proveedor != :codigo");
+                $query_razon->execute([':razon_social' => $razon_social, ':codigo' => $codigo]);
+                $razon_existe = $query_razon->fetchColumn();
+
+                if ($razon_existe > 0) {
+                    echo "<script>
+                            alert('La Razón Social ya existe. Por favor, ingrese una Razón Social diferente.');
+                            window.history.back();
+                        </script>";
+                    exit;
+                }
+
+                // Validar si el RUC ya existe
+                $query_ruc = $pdo->prepare("SELECT COUNT(*) FROM proveedor WHERE ruc = :ruc AND cod_proveedor != :codigo");
+                $query_ruc->execute([':ruc' => $ruc, ':codigo' => $codigo]);
+                $ruc_existe = $query_ruc->fetchColumn();
+
+                if ($ruc_existe > 0) {
+                    echo "<script>
+                            alert('El RUC ya existe. Por favor, ingrese un RUC diferente.');
+                            window.history.back();
+                        </script>";
+                    exit;
+                }
+
+                // Validar si el número de teléfono ya existe
+                $query_telefono = $pdo->prepare("SELECT COUNT(*) FROM proveedor WHERE telefono = :telefono AND cod_proveedor != :codigo");
+                $query_telefono->execute([':telefono' => $telefono, ':codigo' => $codigo]);
+                $telefono_existe = $query_telefono->fetchColumn();
+
+                if ($telefono_existe > 0) {
+                    echo "<script>
+                            alert('El número de teléfono ya existe. Por favor, ingrese un número de teléfono diferente.');
+                            window.history.back();
+                        </script>";
+                    exit;
+                }
 
                 // Insertar en la base de datos
                 $query = $pdo->prepare("INSERT INTO proveedor (cod_proveedor, razon_social, ruc, direccion, telefono) 

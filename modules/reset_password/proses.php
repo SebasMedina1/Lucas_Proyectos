@@ -6,14 +6,14 @@
  * en cuyo caso redirige a la página de inicio con un parámetro de alerta.
  */
 session_start();
-require "../../config/database.php"; // Conexión a PostgreSQL
 
-if (empty($_SESSION['username']) && empty($_SESSION['password'])) {
+require "../../config/database.php"; // Conexión a la base de datos
+
+// Verificar si el usuario está autenticado
+if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
     echo "<script>
             alert('Token de sesión inválido, serás redirigido al inicio de sesión');
-            setTimeout(function() {
-                window.location.href = '../../login.html';
-            }, 1500);
+            window.location.href = '../../login.html';
           </script>";
     exit();
 } else {
@@ -26,28 +26,34 @@ if (empty($_SESSION['username']) && empty($_SESSION['password'])) {
      * si todo está correcto, actualiza la contraseña en la BD y redirecciona con mensaje de éxito.
      */
     if (isset($_POST['Guardar'])) {
-        if (isset($_SESSION['id_user'])) {
+        if (isset($_SESSION['id_usuario'])) {
+            // Validar campos vacíos
+            if (empty($_POST['old_pass']) || empty($_POST['new_pass']) || empty($_POST['retype_pass'])) {
+                header("Location: reset.php?alert=4"); // Campos vacíos
+                exit();
+            }
+
             $old_pass = md5(trim($_POST['old_pass']));
             $new_pass = md5(trim($_POST['new_pass']));
             $retype_pass = md5(trim($_POST['retype_pass']));
 
-            $id_user = $_SESSION['id_user'];
+            $id_user = $_SESSION['id_usuario'];
 
             try {
                 // Consultar la contraseña actual de la BD
-                $stmt = $pdo->prepare("SELECT password FROM usuarios WHERE id_user = :id_user");
+                $stmt = $pdo->prepare("SELECT usua_password FROM usuarios WHERE id_usuario = :id_user");
                 $stmt->bindParam(':id_user', $id_user, PDO::PARAM_INT);
                 $stmt->execute();
                 $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if (!$data || $old_pass !== $data['password']) {
+                if (!$data || $old_pass !== $data['usua_password']) {
                     header("Location: reset.php?alert=1"); // Contraseña antigua incorrecta
                 } else {
                     if ($new_pass !== $retype_pass) {
                         header("Location: reset.php?alert=2"); // Las nuevas contraseñas no coinciden
                     } else {
                         // Actualizar la contraseña en la BD
-                        $update_stmt = $pdo->prepare("UPDATE usuarios SET password = :new_pass WHERE id_user = :id_user");
+                        $update_stmt = $pdo->prepare("UPDATE usuarios SET usua_password = :new_pass WHERE id_usuario = :id_user");
                         $update_stmt->bindParam(':new_pass', $new_pass);
                         $update_stmt->bindParam(':id_user', $id_user, PDO::PARAM_INT);
                         $update_stmt->execute();

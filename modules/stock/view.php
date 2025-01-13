@@ -12,27 +12,47 @@ if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
 }
 
 // Conexión a la base de datos
-include '../../config/database.php';
+$file = realpath("../../config/database.php");
+
+if (!$file || !file_exists($file)) {
+    die("Error: No se pudo encontrar el archivo en la ruta $file");
+}
+
+require_once $file;
 
 // Obtener el nombre de usuario de la sesión
 $username = $_SESSION['username'];
 
-// Consultar los datos del usuario autenticado desde la base de datos
-$query = mysqli_query($mysqli, "SELECT * FROM usuarios WHERE username = '$username'")
-    or die('Error: ' . mysqli_error($mysqli));
+try {
+    // Crear conexión con PostgreSQL usando PDO
+    $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
+    $pdo = new PDO($dsn, $user, $pass);
 
-// Obtener los datos del usuario autenticado
-$auth_user = mysqli_fetch_assoc($query);
+    // Configurar excepciones para errores
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Verificar si se encontraron datos del usuario
-if (!$auth_user) {
-    // Si no se encuentra al usuario, destruir la sesión y redirigir al login
-    session_destroy();
-    echo "<script>
-            alert('Usuario no encontrado, serás redirigido al inicio de sesión');
-            window.location.href = '../../login.html';
-          </script>";
-    exit();
+    // Preparar consulta para obtener datos del usuario autenticado
+    $query = $pdo->prepare("SELECT * FROM usuarios WHERE username = :username");
+    $query->bindParam(':username', $username, PDO::PARAM_STR);
+
+    // Ejecutar consulta
+    $query->execute();
+
+    // Obtener los datos del usuario autenticado
+    $auth_user = $query->fetch(PDO::FETCH_ASSOC);
+
+    // Verificar si se encontraron datos del usuario
+    if (!$auth_user) {
+        // Si no se encuentra al usuario, destruir la sesión y redirigir al login
+        session_destroy();
+        echo "<script>
+                alert('Usuario no encontrado, serás redirigido al inicio de sesión');
+                window.location.href = '../../login.html';
+              </script>";
+        exit();
+    }
+} catch (PDOException $e) {
+    die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
 ?>
 
@@ -77,102 +97,125 @@ if (!$auth_user) {
     <div class="sidebar-brand-icon rotate-n-15">
         <i class="fas fa-laugh-wink"></i>
     </div>
-    <div class="sidebar-brand-text mx-3">Debian service <sup></sup></div>
+    <div class="sidebar-brand-text mx-3">web<sup></sup></div>
     
 </a>
 
 <!-- Divider -->
 <hr class="sidebar-divider my-0">
 
-<!-- Nav Item - Dashboard -->
-<li class="nav-item active">
-    <a class="nav-link" href="../../index.php">
+            <!-- Nav Item - Dashboard -->
+            <li class="nav-item active">
+                <a class="nav-link" href="../../index.php">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>Inicio</span></a>
+            </li>
+            <li class="nav-item active">
+    <a class="nav-link" href="./manual.pdf" target="_blank">
         <i class="fas fa-fw fa-tachometer-alt"></i>
-        <span>Inicio</span></a>
-</li>
-
-<!-- Divider -->
-<hr class="sidebar-divider">
-
-<!-- Heading -->
-<div class="sidebar-heading">
-    Referenciales
-</div>
-
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-        aria-expanded="true" aria-controls="collapseTwo">
-        <i class="fas fa-fw fa-cog"></i>
-        <span>Compras</span>
+        <span>Manual de Usuario</span>
     </a>
-    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            
-            <a class="collapse-item" href="../compras/view.php">Ver / registrar</a>
-            <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-            <a class="collapse-item" href="view.php">Stock</a>
-            <a class="collapse-item" href="../proveedor/view.php">Proveedor</a>
-        </div>
-    </div>
 </li>
 
-<!-- Nav Item - Utilities Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUtilities"
-        aria-expanded="true" aria-controls="collapseUtilities">
-        <i class="fas fa-fw fa-wrench"></i>
-        <span>Ventas</span>
-    </a>
-    <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities"
-        data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="../ventas/view.php">Registrar ventas</a>
-            <a class="collapse-item" href="../clientes/view.php">Cliente</a>
-        </div>
-    </div>
-</li>
+            <!-- Divider -->
+            <hr class="sidebar-divider">
 
-<!-- Divider -->
-<hr class="sidebar-divider">
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Referenciales
+            </div>
 
-<!-- Heading -->
-<div class="sidebar-heading">
-    Centro de control
-</div>
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
+                    aria-expanded="true" aria-controls="collapseTwo">
+                    <i class="fas fa-fw fa-cog"></i>
+                    <span>Compras</span>
+                </a>
+                <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
+                    <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
+                    <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
+                    <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>  
 
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-<a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-    aria-expanded="true" aria-controls="collapsePages">
-    <i class="fas fa-fw fa-folder"></i>
-    <span>Servicios</span>
-</a>
-<div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-    <div class="bg-white py-2 collapse-inner rounded">
-        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
-        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
-        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-        <a class="collapse-item" href="../producto/view.php">Producto</a>
-        <a class="collapse-item" href="../tipo_producto/view.php">Tipo producto</a>
-        <div class="collapse-divider"></div>
-    </div>
-</div>
-</li>
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
-        aria-expanded="true" aria-controls="collapseAdm">
-        <i class="fas fa-fw fa-folder"></i>
-        <span>Administración</span>
-    </a>
-    <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="usuarios.html">Usuarios</a>
-            <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-        </div>
-    </div>
-</li>
+
+                    </div>
+                </div>
+            </li>
+
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Movimientos
+            </div>
+
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
+                    aria-expanded="true" aria-controls="collapsePages">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Referenciales</span>
+                </a>
+                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+
+                        <!-- Categoría: Ajustes -->
+                        <h6 class="collapse-header">Ajustes:</h6>
+                        <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
+                        <a class="collapse-item" href="../stock/view.php">Stock</a>
+                        <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
+                        <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Productos -->
+                        <h6 class="collapse-header">Gestión de Productos:</h6>
+                        <a class="collapse-item" href="../producto/view.php">Producto</a>
+                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Proveedores y Depósitos -->
+                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
+                        <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
+                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Localización 
+                        <h6 class="collapse-header">Localización:</h6>
+                        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
+                        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
+                        -->
+                    </div>
+                </div>
+            </li>
+
+
+
+
+    </li>
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
+                    aria-expanded="true" aria-controls="collapseAdm">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Administración</span>
+                </a>
+                <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
+                        <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
+                    </div>
+                </div>
+            </li>
 
 
 <!-- Divider -->
@@ -369,19 +412,16 @@ if (!$auth_user) {
 
             <!-- Nav Item - User Information -->
             <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                        <?php echo htmlspecialchars($auth_user['name_user']); ?>
-                    </span>
-
-                    <img class="img-profile rounded-circle"
-                        src="../../img/undraw_profile.svg">
-                </a>
-                                            <!-- Dropdown - User Information -->
-                                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($auth_user['username']); ?></span>
+                                <img class="img-profile rounded-circle"
+                                    src="../../img/undraw_profile.svg">
+                            </a>
+                            <!-- Dropdown - User Information -->
+                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                 aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="../../modules/usuario/view.php">
+                                <a class="dropdown-item" href="../usuario/view.php">
                                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Perfil
                                 </a>
@@ -398,54 +438,112 @@ if (!$auth_user) {
     </nav>
     <!-- End of Topbar -->
 
-                <!-- Begin Page Content -->
-                <div class="container-fluid">
-                    <!-- Page Heading -->
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Stock</h1>
-                    </div>
+    <div class="container-fluid">
+    <!-- Título de la página -->
+    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-warehouse"></i> Gestión de Stock</h1>
 
-                    <!-- DataTable -->
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Stock</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead>
-                                        <tr>
-                                            <th>Deposito</th>
-                                            <th>Producto</th>
-                                            <th>Precio Unitario</th>
-                                            <th>Cantidad</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        include '../../config/database.php';
-                                        $query = mysqli_query($mysqli, "select d.descrip as deposito, p.p_descrip as producto, 
-                                        p.precio as precio_unitario, s.cantidad as cantidad from stock s 
-                                        join deposito d on d.cod_deposito = s.cod_deposito 
-                                        join producto p on p.cod_producto = s.cod_producto 
-                                        ;")
-                                            or die('Error: ' . mysqli_error($mysqli));
+    <!-- Formulario de Filtrado -->
+    <form method="GET" action="">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="filtro_deposito">Filtrar por Depósito</label>
+                <select name="filtro_deposito" id="filtro_deposito" class="form-control">
+                    <option value="">Todos los Depósitos</option>
+                    <?php
+                    require "../../config/database.php";
+                    $query_depositos = $pdo->query("SELECT cod_deposito, descrip FROM deposito");
+                    while ($deposito = $query_depositos->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<option value=\"{$deposito['cod_deposito']}\">{$deposito['descrip']}</option>";
+                    }
+                    ?>
+                </select>
+            </div>
 
-                                        while ($data = mysqli_fetch_assoc($query)) {
-                                            echo "<tr>";
-                                            echo "<td>{$data['deposito']}</td>";
-                                            echo "<td>{$data['producto']}</td>";
-                                            echo "<td>{$data['precio_unitario']}</td>";
-                                            echo "<td>{$data['cantidad']}</td>";
-                                            echo "</tr>";
-                                        }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="col-md-4">
+                <label for="filtro_producto">Filtrar por Producto</label>
+                <select name="filtro_producto" id="filtro_producto" class="form-control">
+                    <option value="">Todos los Productos</option>
+                    <?php
+                    $query_productos = $pdo->query("SELECT cod_producto, p_descrip FROM producto");
+                    while ($producto = $query_productos->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<option value=\"{$producto['cod_producto']}\">{$producto['p_descrip']}</option>";
+                    }
+                    ?>
+                </select>
+            </div>
+
+            <div class="col-md-4 align-self-end">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Tabla de Stock -->
+    <div class="card shadow mt-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Stock Disponible</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Depósito</th>
+                            <th>Producto</th>
+                            <th>Precio Unitario</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Construir la consulta SQL con los filtros seleccionados
+                        $filtro_deposito = $_GET['filtro_deposito'] ?? '';
+                        $filtro_producto = $_GET['filtro_producto'] ?? '';
+
+                        $sql = "SELECT d.descrip AS deposito, p.p_descrip AS producto, p.precio AS precio_unitario, s.stock_existencia AS cantidad
+                                FROM stock s
+                                JOIN deposito d ON d.cod_deposito = s.cod_deposito
+                                JOIN producto p ON p.cod_producto = s.cod_producto
+                                WHERE 1=1";
+
+                        // Aplicar filtros si están seleccionados
+                        if (!empty($filtro_deposito)) {
+                            $sql .= " AND s.cod_deposito = :filtro_deposito";
+                        }
+                        if (!empty($filtro_producto)) {
+                            $sql .= " AND s.cod_producto = :filtro_producto";
+                        }
+
+                        $stmt = $pdo->prepare($sql);
+
+                        // Vincular parámetros si se aplican filtros
+                        if (!empty($filtro_deposito)) {
+                            $stmt->bindParam(':filtro_deposito', $filtro_deposito, PDO::PARAM_INT);
+                        }
+                        if (!empty($filtro_producto)) {
+                            $stmt->bindParam(':filtro_producto', $filtro_producto, PDO::PARAM_INT);
+                        }
+
+                        $stmt->execute();
+                        $stocks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Mostrar los resultados
+                        foreach ($stocks as $stock) {
+                            echo "<tr>
+                                    <td>{$stock['deposito']}</td>
+                                    <td>{$stock['producto']}</td>
+                                    <td>{$stock['precio_unitario']}</td>
+                                    <td>{$stock['cantidad']}</td>
+                                  </tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
                 <!-- /.container-fluid -->
             </div>
             <!-- End of Main Content -->
@@ -454,13 +552,33 @@ if (!$auth_user) {
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; Debian Dev's - Nicolas / Denis / César - 2024</span>
+                        <span>Copyright &copy; web - Nicolas Dominguez - 2025</span>
                     </div>
                 </div>
             </footer>
             <!-- End of Footer -->
         </div>
         <!-- End of Content Wrapper -->
+
+            <!-- Modal para Cerrar Sesión -->
+        <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                        <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
     <!-- End of Page Wrapper -->
 

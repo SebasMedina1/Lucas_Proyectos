@@ -92,12 +92,14 @@ try {
         $pdf->Cell(45, 8, $detalle['cantidad'], 1, 0, 'C');
         $pdf->Cell(45, 8,  number_format($detalle['precio'], 0, ',', '.'). " Gs", 1, 0, 'C');
         $pdf->Cell(45, 8,  number_format($detalle['subtotal'], 0, ',', '.'). " Gs", 1, 1, 'C');
+
+        // Sumar el subtotal al total general
     }
 
     // Agregar total al final
     $pdf->Ln(5); // Espaciado
     $pdf->SetFont('Arial', 'B', 12);
-    $pdf->Cell(0, 8, "Total: "  . number_format($presupuesto['total_importe'], 0, ',', '.'). " Gs", 0, 1, 'R');
+    $pdf->Cell(0, 8, "Total: " . $presupuesto['total_importe'] . " Gs", 0, 1, 'R');
 
     // Mostrar el PDF en el navegador
     $pdf->Output('I', "Detalle_Presupuesto_$pre_id.pdf");

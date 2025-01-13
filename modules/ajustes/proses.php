@@ -1,9 +1,20 @@
 <?php
-require "../../config/database.php";
+session_start();
+
+require "../../config/database.php"; // Conexión a la base de datos
+
+// Verificar si el usuario está autenticado
+if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
+    echo "<script>
+            alert('Token de sesión inválido, serás redirigido al inicio de sesión');
+            window.location.href = '../../login.html';
+          </script>";
+    exit();
+}
 
 if (isset($_GET['act']) && $_GET['act'] == 'insert_ajuste') {
     try {
-        session_start(); // Asegúrate de iniciar la sesión para capturar el usuario
+        // Conectar a la base de datos
         $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -11,89 +22,91 @@ if (isset($_GET['act']) && $_GET['act'] == 'insert_ajuste') {
         // Capturar datos del formulario
         $ajuste_id = $_POST['ajuste_id'];
         $ajuste_fecha = $_POST['ajuste_fecha'];
-        $ajuste_motivo = $_POST['motivo'];
-        $detalles = json_decode($_POST['detalles'], true); // Detalles enviados como JSON
-        $usua_id = $_SESSION['usua_id'] ?? null; // Usuario autenticado
+        $ajuste_hora = $_POST['hora'];
+        $cod_producto = $_POST['producto'];
+        $cod_deposito = $_POST['deposito'];
+        $cantidad_ajustada = (int)$_POST['ajuste_cantidad'];
+        $motivo_id = $_POST['motivo'];
+        $tipo_ajuste = "Disminución del Stock"; // Tipo de ajuste fijo
+        $id_usuario = $_SESSION['id_usuario'] ?? null; // Usuario autenticado
 
-        if (!$usua_id) {
+        // Log de depuración en la consola
+echo "<script>console.log('Datos capturados: ajuste_id={$ajuste_id}, fecha={$ajuste_fecha}, hora={$ajuste_hora}, producto={$cod_producto}, deposito={$cod_deposito}, cantidad={$cantidad_ajustada}, motivo={$motivo_id}, usuario={$id_usuario}');</script>";
+
+        if (!$id_usuario) {
             throw new Exception("Usuario no autenticado.");
         }
 
-        // Obtener el `deposito_id` basándose en la primera materia prima (o implementar lógica personalizada)
-        $deposito_id = null;
-        if (!empty($detalles)) {
-            $mat_id = $detalles[0]['codigo']; // Usar la primera materia prima como referencia
-            $queryDeposito = $pdo->prepare("SELECT deposito_id FROM stock_materias WHERE mat_id = :mat_id LIMIT 1");
-            $queryDeposito->execute([':mat_id' => $mat_id]);
-            $deposito = $queryDeposito->fetch(PDO::FETCH_ASSOC);
-            $deposito_id = $deposito['deposito_id'] ?? null;
+        // Validar que la cantidad ajustada no sea mayor al stock existente
+        $stmtValidarStock = $pdo->prepare("
+            SELECT stock_existencia FROM stock
+            WHERE cod_producto = :cod_producto AND cod_deposito = :cod_deposito
+        ");
+        $stmtValidarStock->execute([
+            ':cod_producto' => $cod_producto,
+            ':cod_deposito' => $cod_deposito
+        ]);
+        $stock = $stmtValidarStock->fetch(PDO::FETCH_ASSOC);
 
-            if (is_null($deposito_id)) {
-                throw new Exception("No se pudo determinar el depósito para la materia prima con ID: {$mat_id}");
-            }
+        if (!$stock || $cantidad_ajustada > $stock['stock_existencia']) {
+            throw new Exception("La cantidad ajustada excede el stock existente.");
         }
 
         // Insertar en la tabla ajustes
         $stmtAjuste = $pdo->prepare("
-            INSERT INTO ajustes (ajuste_id, ajuste_fecha, ajuste_motivo, deposito_id, usua_id,ajuste_estado)
-            VALUES (:ajuste_id, :ajuste_fecha, :ajuste_motivo, :deposito_id, :usua_id,'PROCESADO')
+            INSERT INTO ajustes (ajuste_id, ajuste_fecha, ajuste_hora, cod_deposito, id_usuario, ajuste_estado, motivo_id, tipo_ajuste)
+            VALUES (:ajuste_id, :ajuste_fecha, :ajuste_hora, :cod_deposito, :id_usuario, 'PROCESADO', :motivo_id, :tipo_ajuste)
         ");
         $stmtAjuste->execute([
             ':ajuste_id' => $ajuste_id,
             ':ajuste_fecha' => $ajuste_fecha,
-            ':ajuste_motivo' => $ajuste_motivo,
-            ':deposito_id' => $deposito_id,
-            ':usua_id' => $usua_id
+            ':ajuste_hora' => $ajuste_hora,
+            ':cod_deposito' => $cod_deposito,
+            ':id_usuario' => $id_usuario,
+            ':motivo_id' => $motivo_id,
+            ':tipo_ajuste' => $tipo_ajuste
         ]);
 
-        // Insertar detalles y actualizar stock
+
+        // Insertar en la tabla ajuste_detalle
         $stmtDetalle = $pdo->prepare("
-            INSERT INTO ajuste_detalle (ajuste_id, mat_id, ajuste_cantidad)
-            VALUES (:ajuste_id, :mat_id, :ajuste_cantidad)
+            INSERT INTO ajuste_detalle (ajuste_id, cod_producto, ajuste_cantidad, cod_deposito)
+            VALUES (:ajuste_id, :cod_producto, :ajuste_cantidad, :cod_deposito)
         ");
+        $stmtDetalle->execute([
+            ':ajuste_id' => $ajuste_id,
+            ':cod_producto' => $cod_producto,
+            ':ajuste_cantidad' => $cantidad_ajustada,
+            ':cod_deposito' => $cod_deposito
+        ]);
+
+        // Actualizar la tabla stock
         $stmtStock = $pdo->prepare("
-            UPDATE stock_materias
-            SET stock_existencia = stock_existencia + :ajuste_cantidad
-            WHERE mat_id = :mat_id AND deposito_id = :deposito_id
+            UPDATE stock
+            SET stock_existencia = GREATEST(stock_existencia - :ajuste_cantidad, 0)
+            WHERE cod_producto = :cod_producto AND cod_deposito = :cod_deposito
         ");
-
-        foreach ($detalles as $detalle) {
-            $mat_id = $detalle['codigo'];
-            $ajuste_cantidad = $detalle['cantidad'];
-
-            // Insertar en ajuste_detalle
-            $stmtDetalle->execute([
-                ':ajuste_id' => $ajuste_id,
-                ':mat_id' => $mat_id,
-                ':ajuste_cantidad' => $ajuste_cantidad
-            ]);
-
-            // Calcular el ajuste para el stock
-            $ajuste_cantidad = ($ajuste_motivo === 'faltante') ? $ajuste_cantidad : -$ajuste_cantidad;
-
-            // Actualizar stock
-            $stmtStock->execute([
-                ':ajuste_cantidad' => $ajuste_cantidad,
-                ':mat_id' => $mat_id,
-                ':deposito_id' => $deposito_id
-            ]);
-        }
+        $stmtStock->execute([
+            ':ajuste_cantidad' => $cantidad_ajustada,
+            ':cod_producto' => $cod_producto,
+            ':cod_deposito' => $cod_deposito
+        ]);
 
         // Redirigir con éxito
         header("Location: view.php?alert=1");
         exit;
     } catch (PDOException $e) {
-        error_log("Error en la operación de ajuste: " . $e->getMessage());
+        echo "<script>console.error('Error en la operación de ajuste: " . $e->getMessage() . "');</script>";
         header("Location: view.php?alert=4");
     } catch (Exception $e) {
-        error_log("Error general: " . $e->getMessage());
+        echo "<script>console.error('Error general: " . $e->getMessage() . "');</script>";
         header("Location: view.php?alert=4");
     }
 }
 
 if (isset($_GET['act']) && $_GET['act'] == 'anular') {
     try {
-        session_start();
+        // Conectar a la base de datos
         $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -102,39 +115,32 @@ if (isset($_GET['act']) && $_GET['act'] == 'anular') {
         $ajuste_id = $_GET['ajuste_id'];
 
         // Verificar si el ajuste existe y está activo
-        $stmtAjuste = $pdo->prepare("SELECT ajuste_motivo FROM ajustes WHERE ajuste_id = :ajuste_id");
+        $stmtAjuste = $pdo->prepare("SELECT ajuste_estado FROM ajustes WHERE ajuste_id = :ajuste_id");
         $stmtAjuste->execute([':ajuste_id' => $ajuste_id]);
         $ajuste = $stmtAjuste->fetch(PDO::FETCH_ASSOC);
 
-        if (!$ajuste) {
-            throw new Exception("El ajuste no existe o ya está anulado.");
+        if (!$ajuste || $ajuste['ajuste_estado'] === 'ANULADO') {
+            header("Location: view.php?alert=5");
+            exit;
         }
 
-        $ajuste_motivo = $ajuste['ajuste_motivo'];
-
         // Obtener los detalles del ajuste
-        $stmtDetalles = $pdo->prepare("SELECT mat_id, ajuste_cantidad FROM ajuste_detalle WHERE ajuste_id = :ajuste_id");
+        $stmtDetalles = $pdo->prepare("SELECT cod_producto, ajuste_cantidad, cod_deposito FROM ajuste_detalle WHERE ajuste_id = :ajuste_id");
         $stmtDetalles->execute([':ajuste_id' => $ajuste_id]);
         $detalles = $stmtDetalles->fetchAll(PDO::FETCH_ASSOC);
 
-        // Actualizar el stock según el motivo del ajuste
+        // Actualizar el stock sumando la cantidad ajustada
         $stmtStock = $pdo->prepare("
-            UPDATE stock_materias
-            SET stock_existencia = stock_existencia + :cantidad
-            WHERE mat_id = :mat_id
+            UPDATE stock
+            SET stock_existencia = stock_existencia + :ajuste_cantidad
+            WHERE cod_producto = :cod_producto AND cod_deposito = :cod_deposito
         ");
 
         foreach ($detalles as $detalle) {
-            $ajuste_cantidad = $detalle['ajuste_cantidad'];
-            if ($ajuste_motivo === 'faltante') {
-                $ajuste_cantidad = -$ajuste_cantidad; // Si era faltante, ahora sumamos
-            } else if ($ajuste_motivo === 'sobrante') {
-                $ajuste_cantidad = abs($ajuste_cantidad); // Si era sobrante, ahora restamos
-            }
-
             $stmtStock->execute([
-                ':cantidad' => $ajuste_cantidad,
-                ':mat_id' => $detalle['mat_id']
+                ':ajuste_cantidad' => $detalle['ajuste_cantidad'],
+                ':cod_producto' => $detalle['cod_producto'],
+                ':cod_deposito' => $detalle['cod_deposito']
             ]);
         }
 
@@ -148,10 +154,11 @@ if (isset($_GET['act']) && $_GET['act'] == 'anular') {
 
     } catch (PDOException $e) {
         error_log("Error al anular el ajuste: " . $e->getMessage());
-        header("Location: view.php?alert=4");
+        echo "<script>console.error('Error al anular el ajuste: " . $e->getMessage() . "');</script>";
     } catch (Exception $e) {
         error_log("Error general: " . $e->getMessage());
-        header("Location: view.php?alert=4");
+        echo "<script>console.error('Error general: " . $e->getMessage() . "');</script>";
     }
 }
+
 ?>

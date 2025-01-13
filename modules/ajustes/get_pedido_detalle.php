@@ -1,9 +1,9 @@
 <?php
 require "../../config/database.php";
 
-$facturaId = $_GET['mat_id'] ?? null;
+$producto = $_GET['cod_producto'] ?? null;
 
-if (!$facturaId) {
+if (!$producto) {
     echo json_encode([]);
     exit;
 }
@@ -13,18 +13,19 @@ try {
     $pdo = new PDO($dsn, $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // Consulta para obtener el stock existencia
     $query = $pdo->prepare("
-        SELECT m.mat_id as codigo, m.mat_descripcion as materia,dp.deposito_descripcion as deposito FROM materias_primas m 
-        join depositos dp on m.deposito_id = dp.deposito_id
-        where mat_id= :mat_id
-
+        SELECT p.cod_producto, p.p_descrip AS producto, d.descrip AS deposito, 
+               COALESCE(s.stock_existencia, 0) AS stock_existencia
+        FROM producto p
+        JOIN deposito d ON p.cod_deposito = d.cod_deposito
+        LEFT JOIN stock s ON p.cod_producto = s.cod_producto AND d.cod_deposito = s.cod_deposito
+        WHERE p.cod_producto = :cod_producto
     ");
-    $query->bindParam(':mat_id', $facturaId, PDO::PARAM_INT);
+    $query->bindParam(':cod_producto', $producto, PDO::PARAM_INT);
     $query->execute();
 
     $detalles = $query->fetchAll(PDO::FETCH_ASSOC);
-
-
 
     echo json_encode($detalles);
 } catch (PDOException $e) {

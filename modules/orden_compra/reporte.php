@@ -26,6 +26,7 @@ try {
             oc.orden_hora,
             oc.orden_estado,
             oc.orden_total,
+
             p.razon_social AS proveedor,
             u.username AS usuario,
             oc.orden_id
@@ -101,16 +102,16 @@ try {
         $pdf->Cell(70, 8, $detalle['producto'], 1, 0, 'C');
         $pdf->Cell(20, 8, $detalle['iva'].'%', 1, 0, 'C');
         $pdf->Cell(20, 8, $detalle['orden_cantidad'], 1, 0, 'C');
-        $pdf->Cell(40, 8, number_format($detalle['orden_precio'], 2), 1, 0, 'C');
-        $pdf->Cell(40, 8, number_format($detalle['subtotal'], 2), 1, 1, 'C');
-        $totalGeneral += $detalle['subtotal'];
+        $pdf->Cell(40, 8, number_format($detalle['orden_precio'], 0, ',', '.'), 1, 0, 'C');
+        $pdf->Cell(40, 8, number_format($detalle['subtotal'], 0, ',', '.'), 1, 1, 'C');
+        
     }
 
     // Total general
     $pdf->Ln(5);
     $pdf->SetFont('Arial', 'B', 12);
     $pdf->Cell(140, 8, 'Total:', 0, 0, 'R');
-    $pdf->Cell(40, 8, number_format($totalGeneral, 2), 1, 1, 'C');
+    $pdf->Cell(40, 8, $orden['orden_total'] .' Gs', 1, 1, 'C');
 
     // Mostrar el PDF en el navegador
     $pdf->Output('I', "Detalle_Orden_$orden_id.pdf");

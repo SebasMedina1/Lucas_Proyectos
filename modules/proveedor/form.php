@@ -70,6 +70,20 @@ if (isset($_GET['form_proveedor']) && $_GET['form'] == 'add') { ?>
             </div>
         </div>
     </div>
+
+    <script>
+        function limpiarFormulario() {
+        // Limpiar campos de texto
+        document.getElementById('descrip_razon').value = '';
+        document.getElementById('descrip_ruc').value = '';
+        document.getElementById('descrip_direccion').value = '';
+        document.getElementById('descrip_telefono').value = '';
+    }
+
+    window.onload = limpiarFormulario;
+
+
+    </script>
 <?php
 }
  
@@ -139,6 +153,21 @@ elseif (isset($_GET['form_proveedor']) && $_GET['form'] == 'edit') {
             </div>
         </div>
     </div>
+
+
+    <script>
+        function limpiarFormulario() {
+        // Limpiar campos de texto
+        document.getElementById('descrip_razon').value = '';
+        document.getElementById('descrip_ruc').value = '';
+        document.getElementById('descrip_direccion').value = '';
+        document.getElementById('descrip_telefono').value = '';
+    }
+
+    window.onload = limpiarFormulario;
+
+
+    </script>
 <?php 
 }
 
@@ -147,4 +176,7 @@ else {
     // Si no existe 'form' en la URL o el valor no es válido, redirigir a la lista de ciudades
     header('Location: view.php');
 }
+
+
+
 ?>

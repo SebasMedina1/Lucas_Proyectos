@@ -27,7 +27,7 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                     $codigo = ($data['id'] !== null) ? $data['id'] + 1 : 1;
                     date_default_timezone_set('America/Asuncion');
                     $fecha = date("Y-m-d"); // Formato: YYYY-MM-DD (año:mes:dia)
-                    $hora = date("h:i A"); // Formato: hh:mm:ss AM/PM (hora:minutos)
+                    $hora = date("H:i:s"); // Formato 24 horas (HH:mm:ss)
                 } catch (PDOException $e) {
                     die("Error: " . $e->getMessage());
                 }
@@ -49,34 +49,26 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
 
                 <!-- Campos adicionales -->
                 <div class="row mb-3">
-                    <!-- Campo para seleccionar el tipo de factura -->
+                    <!-- Campo de la condicion de pago -->
                     <div class="col-md-4">
-                        <label for="tipo_factura" class="form-label">Tipo de Factura</label>
-                        <select class="form-control" id="tipo_factura" name="tipo_factura" required>
-                            <option value="" selected>Seleccione el tipo de factura</option>
-                            <?php
-                            $query_tipo_factura = $pdo->query("SELECT tipo_id, tipo_descripcion FROM tipo_factura ORDER BY tipo_id ASC");
-                            while ($tipo_factura = $query_tipo_factura->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value=\"{$tipo_factura['tipo_id']}\">{$tipo_factura['tipo_descripcion']}</option>";
-                            }
-                            ?>
-                        </select>
+                        <label for="condicion_pago" class="form-label">Condición de Pago</label>
+                        <input type="text" class="form-control" id="condicion_pago" name="condicion_pago" value="Contado" readonly>
                     </div>
+
+
 
                     <!-- Campo para el número de factura -->
                     <div class="col-md-4">
                         <label for="numero_factura" class="form-label">Número de Factura</label>
-                        <input type="text" class="form-control" id="numero_factura" name="numero_factura" placeholder="Ingrese el número de la factura" required>
+                        <input type="text" class="form-control" id="numero_factura" name="numero_factura" 
+                            placeholder="Ingrese el número de la factura" 
+                            pattern="^[1-9\-]+$" 
+                            title="Solo se permiten números del 1 al 9 y guiones (-)." 
+                            required>
                     </div>
-                    <div class="col-md-4">
-                        <label for="nota_remision" class="form-label">¿Desea Nota de Remisión?</label><br>
-                        <input type="checkbox" id="nota_remision" name="nota_remision" value="1">
-                        <label for="nota_remision">Sí, generar nota de remisión</label>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="cantidad_cuotas" class="form-label">Cantidad de cuotas</label>
-                        <input type="text" class="form-control" id="cantidad_cuotas" name="cantidad_cuotas" placeholder="Ingrese la cantidad de cuotas" required>
-                    </div>
+
+
+
 
                 </div>
 
@@ -142,7 +134,7 @@ if (isset($_GET['gestionar_compras']) && $_GET['form'] == 'add') { ?>
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label for="total_importe">Total Importe</label>
-                        <input type="number" class="form-control" id="total_importe" name="total_importe" readonly>
+                        <input type="text" class="form-control" id="total_importe" name="total_importe" readonly>
                     </div>
                 </div>
 
@@ -196,32 +188,47 @@ document.getElementById('presupuesto').addEventListener('change', async function
     }
 });
 
-// Función para calcular los totales (IVA y subtotal)
-function actualizarTotales() {
+    // Función para calcular los totales (IVA y subtotal)
+    function actualizarTotales() {
     let totalImporte = 0;
 
+    // Recorrer cada fila de la tabla de productos
     document.querySelectorAll('#tabla-productos tbody tr').forEach(row => {
         const cantidad = parseFloat(row.children[3].textContent) || 0; // Cantidad
-        const precio = parseFloat(row.querySelector('.precio').textContent) || 0; // Precio
-        const tipoIva = parseFloat(row.querySelector('.iva').textContent) || 0; // Tipo de IVA
+        const precio = parseFloat(row.querySelector('.precio').textContent.replace(/\./g, '')) || 0; // Precio sin puntos
+        const tipoIva = parseFloat(row.querySelector('.iva').textContent.replace('%', '')) || 0; // Tipo de IVA
 
-        // Calcular monto del IVA
-        const montoIva = cantidad * precio * (tipoIva / 100);
+        let montoIva = 0;
 
-        // Calcular subtotal incluyendo IVA
-        const subtotal = cantidad * precio + montoIva;
+        // Calcular monto del IVA según el tipo de IVA
+        if (tipoIva === 10) {
+            montoIva = Math.floor(precio / 11); // IVA 10%
+        } else if (tipoIva === 5) {
+            montoIva = Math.floor(precio / 21); // IVA 5%
+        } else {
+            montoIva = 0; // IVA 0%
+        }
+
+        // Calcular el subtotal y el monto total del IVA
+        const subtotal = cantidad * precio;
+        const totalIva = montoIva * cantidad;
 
         // Actualizar los valores en la fila
-        row.querySelector('.monto-iva').textContent = isNaN(montoIva) ? '0' : montoIva.toFixed(2);
-        row.querySelector('.subtotal').textContent = isNaN(subtotal) ? '0' : subtotal.toFixed(2);
+        row.querySelector('.monto-iva').textContent = totalIva.toFixed(2);
+        row.querySelector('.subtotal').textContent = subtotal.toFixed(2);
 
-        // Sumar al total general
-        totalImporte += subtotal;
+        // Sumar al total general (subtotal + IVA)
+        totalImporte += subtotal + totalIva;
     });
 
     // Actualizar el total general en el campo correspondiente
-    document.getElementById('total_importe').value = totalImporte.toFixed(2);
+    document.getElementById('total_importe').value = `${totalImporte.toFixed(2)} Gs`;
+
 }
+
+
+
+
 
 // Manejar la eliminación de filas visualmente
 document.querySelector('#tabla-productos').addEventListener('click', function (e) {
@@ -229,6 +236,7 @@ document.querySelector('#tabla-productos').addEventListener('click', function (e
         const row = e.target.closest('tr');
         row.remove(); // Eliminar fila visualmente
         actualizarTotales(); // Recalcular totales
+        limpiarFormulario();
     }
 });
 
@@ -299,6 +307,74 @@ function showErrorModal(message) {
         modal.remove();
     });
 }
+
+
+    document.getElementById('numero_factura').addEventListener('blur', function() {
+        const numeroFactura = this.value;
+
+        if (numeroFactura !== '') {
+            fetch(`verificar_factura.php?numero_factura=${numeroFactura}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.existe) {
+                        alert('El número de factura ya existe. Por favor, ingrese un número diferente.');
+                        this.value = ''; // Limpiar el campo
+                        this.focus(); // Regresar el foco al campo
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    });
+
+
+    // Obtener los elementos de los campos de fecha
+    const vigenciaDesde = document.getElementById('vigencia_desde');
+    const vigenciaHasta = document.getElementById('vigencia_hasta');
+
+    // Establecer la fecha mínima para "Vigencia Desde" como la fecha actual
+    const today = new Date().toISOString().split('T')[0];
+    vigenciaDesde.setAttribute('min', today);
+
+    // Validar que "Vigencia Hasta" sea mayor que "Vigencia Desde"
+    vigenciaDesde.addEventListener('change', function () {
+        // Ajustar la fecha mínima de "Vigencia Hasta" según "Vigencia Desde"
+        vigenciaHasta.setAttribute('min', vigenciaDesde.value);
+
+        // Limpiar el campo "Vigencia Hasta" si su valor es menor que "Vigencia Desde"
+        if (vigenciaHasta.value && vigenciaHasta.value < vigenciaDesde.value) {
+            vigenciaHasta.value = '';
+        }
+    });
+
+    vigenciaHasta.addEventListener('change', function () {
+        // Validar que "Vigencia Hasta" sea mayor que "Vigencia Desde"
+        if (vigenciaHasta.value < vigenciaDesde.value) {
+            alert('La fecha "Vigencia Hasta" debe ser mayor que "Vigencia Desde".');
+            vigenciaHasta.value = '';
+        }
+    });
+
+    // Función para limpiar los campos del formulario
+    function limpiarFormulario() {
+        document.getElementById('numero_factura').value = '';
+        document.getElementById('timbrado').value = '';
+        document.getElementById('vigencia_desde').value = '';
+        document.getElementById('vigencia_hasta').value = '';
+        document.getElementById('presupuesto').selectedIndex = 0;
+        document.getElementById('total_importe').value = '';
+
+        // Limpiar la tabla de productos si existe
+        const tablaProductos = document.querySelector('#tabla-productos tbody');
+        if (tablaProductos) {
+            tablaProductos.innerHTML = '';
+        }
+    }
+
+    // Ejecutar la función al cargar la página
+    window.onload = limpiarFormulario;
+
+
+
 </script>
 
 <?php } ?>

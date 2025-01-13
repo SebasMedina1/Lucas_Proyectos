@@ -12,28 +12,52 @@ if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
 }
 
 // Conexión a la base de datos
-require '../../config/database.php'; // Conexión PostgreSQL
+$file = realpath("../../config/database.php");
 
+if (!$file || !file_exists($file)) {
+    die("Error: No se pudo encontrar el archivo en la ruta $file");
+}
+
+require_once $file;
+
+// Obtener el nombre de usuario de la sesión
 $username = $_SESSION['username'];
 
-// Consultar los datos del usuario autenticado desde la base de datos
-$stmt = $pdo->prepare("SELECT * FROM usuarios WHERE username = :username");
-$stmt->bindParam(':username', $username);
-$stmt->execute();
+try {
+    // Crear conexión con PostgreSQL usando PDO
+    $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
+    $pdo = new PDO($dsn, $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Obtener los datos del usuario autenticado
-$auth_user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Preparar consulta para obtener datos del usuario y del personal relacionado
+    $query = $pdo->prepare("
+        SELECT u.*, p.personal_nombre, p.personal_apellido, p.personal_telefono, p.personal_ci, p.personal_direccion 
+        FROM usuarios u
+        INNER JOIN personal p ON u.personal_id = p.personal_id
+        WHERE u.username = :username
+    ");
+    $query->bindParam(':username', $username, PDO::PARAM_STR);
 
-// Verificar si se encontraron datos del usuario
-if (!$auth_user) {
-    // Si no se encuentra al usuario, destruir la sesión y redirigir al login
-    session_destroy();
-    echo "<script>
-            alert('Usuario no encontrado, serás redirigido al inicio de sesión');
-            window.location.href = '../../login.html';
-          </script>";
-    exit();
+    // Ejecutar consulta
+    $query->execute();
+
+    // Obtener los datos del usuario autenticado junto con los datos del personal
+    $auth_user = $query->fetch(PDO::FETCH_ASSOC);
+
+    // Verificar si se encontraron datos del usuario
+    if (!$auth_user) {
+        // Si no se encuentra al usuario, destruir la sesión y redirigir al login
+        session_destroy();
+        echo "<script>
+                alert('Usuario no encontrado, serás redirigido al inicio de sesión');
+                window.location.href = '../../login.html';
+              </script>";
+        exit();
+    }
+} catch (PDOException $e) {
+    die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -59,27 +83,127 @@ if (!$auth_user) {
     <div id="wrapper">
 
         <!-- Sidebar -->
-        <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion">
+        <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+
+            <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="../../index.php">
                 <div class="sidebar-brand-icon rotate-n-15">
                     <i class="fas fa-laugh-wink"></i>
                 </div>
                 <div class="sidebar-brand-text mx-3">web</div>
             </a>
-            <hr class="sidebar-divider">
+
+            <!-- Divider -->
+            <hr class="sidebar-divider my-0">
+
+            <!-- Nav Item - Inicio -->
             <li class="nav-item active">
-                <a class="nav-link" href="view.php">
-                    <i class="fas fa-user"></i>
-                    <span>Perfil</span>
-                </a>
-            </li>
-            <li class="nav-item active">
-                <a class="nav-link" href="view.php">
-                    <i class="fas fa-user"></i>
+                <a class="nav-link" href="../../index.php">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
                     <span>Inicio</span>
                 </a>
             </li>
+
+            <!-- Nav Item - Manual de Usuario -->
+            <li class="nav-item active">
+                <a class="nav-link" href="./manual.pdf" target="_blank">
+                    <i class="fas fa-fw fa-book"></i>
+                    <span>Manual de Usuario</span>
+                </a>
+            </li>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Referenciales
+            </div>
+
+            <!-- Nav Item - Compras -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseCompras"
+                    aria-expanded="true" aria-controls="collapseCompras">
+                    <i class="fas fa-fw fa-cog"></i>
+                    <span>Compras</span>
+                </a>
+                <div id="collapseCompras" class="collapse" aria-labelledby="headingCompras" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
+                        <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
+                        <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
+                        <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Movimientos
+            </div>
+
+            <!-- Nav Item - Referenciales -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReferenciales"
+                    aria-expanded="true" aria-controls="collapseReferenciales">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Referenciales</span>
+                </a>
+                <div id="collapseReferenciales" class="collapse" aria-labelledby="headingReferenciales" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <!-- Categoría: Ajustes -->
+                        <h6 class="collapse-header">Ajustes:</h6>
+                        <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
+                        <a class="collapse-item" href="../stock/view.php">Stock</a>
+                        <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
+                        <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Productos -->
+                        <h6 class="collapse-header">Gestión de Productos:</h6>
+                        <a class="collapse-item" href="../producto/view.php">Producto</a>
+                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Proveedores y Depósitos -->
+                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
+                        <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
+                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Nav Item - Administración -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdministracion"
+                    aria-expanded="true" aria-controls="collapseAdministracion">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Administración</span>
+                </a>
+                <div id="collapseAdministracion" class="collapse" aria-labelledby="headingAdministracion" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
+                        <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
         </ul>
+        <!-- End of Sidebar -->
+
         <!-- Fin del Sidebar -->
 
         <!-- Content Wrapper -->
@@ -94,7 +218,7 @@ if (!$auth_user) {
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                                    <?php echo htmlspecialchars($auth_user['name_user']); ?>
+                                    <?php echo htmlspecialchars($auth_user['username']); ?>
                                 </span>
                                 <img class="img-profile rounded-circle" src="../../img/undraw_profile.svg">
                             </a>
@@ -117,7 +241,6 @@ if (!$auth_user) {
 
                 <!-- Contenido Principal -->
                 <div class="container-fluid">
-
                     <!-- Título de Página -->
                     <h1 class="h3 mb-4 text-gray-800">Perfil de Usuario</h1>
 
@@ -132,18 +255,21 @@ if (!$auth_user) {
                                     <img class="img-profile rounded-circle" src="../../img/undraw_profile.svg" width="100%">
                                 </div>
                                 <div class="col-md-9">
-                                    <h4><?php echo htmlspecialchars($auth_user['name_user']); ?></h4>
+                                <h4><?php echo htmlspecialchars(strtoupper($auth_user['personal_nombre'] . ' ' . $auth_user['personal_apellido'])); ?></h4>
                                     <p><strong>Nombre de usuario:</strong> <?php echo htmlspecialchars($auth_user['username']); ?></p>
                                     <p><strong>Email:</strong> <?php echo htmlspecialchars($auth_user['email']); ?></p>
-                                    <p><strong>Teléfono:</strong> <?php echo htmlspecialchars($auth_user['telefono']); ?></p>
+                                    <p><strong>Teléfono:</strong> <?php echo htmlspecialchars($auth_user['personal_telefono']); ?></p>
+                                    <p><strong>Cédula de Identidad:</strong> <?php echo htmlspecialchars($auth_user['personal_ci']); ?></p>
+                                    <p><strong>Dirección:</strong> <?php echo htmlspecialchars($auth_user['personal_direccion']); ?></p>
+                                    <p><strong>Permisos de Acceso:</strong> <?php echo htmlspecialchars($auth_user['permisos_acceso']); ?></p>
                                     <p><strong>Estado:</strong> <?php echo htmlspecialchars($auth_user['estado']); ?></p>
-                                    <a href="../../index.php" class="btn btn-primary">Inicio</a> 
+                                    
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
+
                 <!-- Fin del Contenido Principal -->
             </div>
             <!-- Fin del Main Content -->
@@ -152,7 +278,7 @@ if (!$auth_user) {
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; web - Nicolas Dominguez - 2024</span>
+                        <span>Copyright &copy; web - Nicolas Dominguez - 2025</span>
                     </div>
                 </div>
             </footer>

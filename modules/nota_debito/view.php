@@ -27,21 +27,18 @@ try {
     // Crear conexión con PostgreSQL usando PDO
     $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
     $pdo = new PDO($dsn, $user, $pass);
+
+    // Configurar excepciones para errores
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Preparar consulta para obtener datos del usuario y del personal relacionado
-    $query = $pdo->prepare("
-        SELECT u.*, p.personal_nombre, p.personal_apellido, p.personal_telefono, p.personal_ci, p.personal_direccion 
-        FROM usuarios u
-        INNER JOIN personal p ON u.personal_id = p.personal_id
-        WHERE u.username = :username
-    ");
+    // Preparar consulta para obtener datos del usuario autenticado
+    $query = $pdo->prepare("SELECT * FROM usuarios WHERE username = :username");
     $query->bindParam(':username', $username, PDO::PARAM_STR);
 
     // Ejecutar consulta
     $query->execute();
 
-    // Obtener los datos del usuario autenticado junto con los datos del personal
+    // Obtener los datos del usuario autenticado
     $auth_user = $query->fetch(PDO::FETCH_ASSOC);
 
     // Verificar si se encontraron datos del usuario
@@ -57,7 +54,6 @@ try {
 } catch (PDOException $e) {
     die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
-
 ?>
 
 
@@ -71,7 +67,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
-    <title>Pedidos de compras</title>
+    <title>Nota Débito</title>
 
     <!-- Custom fonts for this template-->
     <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
@@ -103,7 +99,7 @@ try {
     <div class="sidebar-brand-icon rotate-n-15">
         <i class="fas fa-laugh-wink"></i>
     </div>
-    <div class="sidebar-brand-text mx-3">web <sup></sup></div>
+    <div class="sidebar-brand-text mx-3">nota<sup></sup></div>
     
 </a>
 
@@ -447,55 +443,57 @@ try {
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
                     <!-- Verifica si se está mostrando el formulario -->
-                    <?php if (!isset($_GET['form_pedido_compra']) || $_GET['form'] !== 'add'): ?>
+                    <?php if (!isset($_GET['gestionar_compras']) || $_GET['form'] !== 'add'): ?>
                         <!-- Page Heading -->
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                            <h1 class="h3 mb-0 text-gray-800">Pedidos Compras</h1>
-                            <a href="?form_pedido_compra=add&form=add" class="btn btn-primary btn-sm shadow-sm">
-                                <i class="fas fa-plus fa-sm text-white-50"></i> Nuevo Pedido
+                            <h1 class="h3 mb-0 text-gray-800">Nota Débito</h1>
+                            <a href="?gestionar_compras=add&form=add" class="btn btn-primary btn-sm shadow-sm">
+                                <i class="fas fa-plus fa-sm text-white-50"></i> Nueva Nota de débito
                             </a>
                         </div>
 
-
                         <!-- Alert Messages -->
                         <?php 
-                        if (!empty($_GET['alert'])) {
-                            $alertMessage = '';
-                            $alertClass = 'alert-success'; // Clase por defecto
+                            if (!empty($_GET['alert'])) {
+                                $alertMessage = '';
+                                $alertClass = 'alert-success'; // Clase por defecto
 
-                            if ($_GET['alert'] == 1) {
-                                $alertMessage = "Datos registrados correctamente.";
-                            } elseif ($_GET['alert'] == 2) {
-                                $alertMessage = "Datos modificados correctamente.";
-                            } elseif ($_GET['alert'] == 3) {
-                                $alertMessage = "Registro Anulado correctamente.";
-                            } elseif ($_GET['alert'] == 4) {
-                                $alertMessage = "No se pudo realizar la operación.";
-                                $alertClass = 'alert-danger'; 
-                            }
-
-                            echo "<div id='alert-message' class='alert $alertClass alert-dismissible fade show' role='alert'>";
-                            echo $alertMessage;
-                            echo "<button type='button' class='close' data-dismiss='alert' aria-label='Close'>";
-                            echo "<span aria-hidden='true'>&times;</span>";
-                            echo "</button>";
-                            echo "</div>";
-                        }
-                        ?>
-                        <script>
-                            // Ocultar el mensaje de alerta automáticamente después de 3 segundos
-                            setTimeout(function() {
-                                var alertMessage = document.getElementById('alert-message');
-                                if (alertMessage) {
-                                    alertMessage.style.display = 'none';
+                                if ($_GET['alert'] == 1) {
+                                    $alertMessage = "Datos registrados correctamente.";
+                                } elseif ($_GET['alert'] == 2) {
+                                    $alertMessage = "Datos modificados correctamente.";
+                                } elseif ($_GET['alert'] == 3) {
+                                    $alertMessage = "Registro anulado correctamente.";
+                                } elseif ($_GET['alert'] == 4) {
+                                    $alertMessage = "No se pudo realizar la operación.";
+                                    $alertClass = 'alert-danger'; 
+                                }elseif ($_GET['alert'] == 5) {
+                                    $alertMessage = "La nota de débito seleccionada ya está anulada.";
+                                    $alertClass = 'alert-danger'; 
                                 }
-                            }, 3000);
-                        </script>
+
+                                echo "<div id='alert-message' class='alert $alertClass alert-dismissible fade show' role='alert'>";
+                                echo $alertMessage;
+                                echo "<button type='button' class='close' data-dismiss='alert' aria-label='Close'>";
+                                echo "<span aria-hidden='true'>&times;</span>";
+                                echo "</button>";
+                                echo "</div>";
+                            }
+                            ?>
+                            <script>
+                                // Ocultar el mensaje de alerta automáticamente después de 3 segundos
+                                setTimeout(function() {
+                                    var alertMessage = document.getElementById('alert-message');
+                                    if (alertMessage) {
+                                        alertMessage.style.display = 'none';
+                                    }
+                                }, 3000);
+                            </script>
 
                         <!-- DataTable -->
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Lista de Pedidos</h6>
+                                <h6 class="m-0 font-weight-bold text-primary">Lista de Notas de débito </h6>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -503,12 +501,15 @@ try {
                                     <thead>
                                     <tr>
                                         <th>Código</th>
-                                        <th>Fecha del Pedido</th>
-                                        <th>Hora del Pedido</th>
                                         <th>Estado</th>
-                                        <th>Detalle</th> <!-- Nueva columna -->
+                                        <th>Proveedor</th>
+                                        <th>Factura total</th>
+                                        <th>Monto Nota</th>
+                                        <th>Fecha Nota</th>
+                                        <th>Detalle</th>  <!-- Nueva columna -->
                                         <th>Usuario</th>
-                                     
+                                        <th>Nombre</th>
+                                        <th>Apellido</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -522,38 +523,47 @@ try {
 
                                         // Consultar datos
                                         $query = $pdo->query("SELECT 
-                                                                pc.pedido_id, 
-                                                                pc.pedido_fecha, 
-                                                                pc.pedido_hora, 
-                                                                pc.estado,
-                                                                u.username
-                                                               
-                                                            FROM pedidos_compras pc
-                                                            JOIN usuarios u ON pc.id_usuario = u.id_usuario
-                                                            
-                                                            ORDER BY pc.pedido_id DESC");
+                                                                nc.nota_debito_id, 
+                                                                nc.nota_estado,
+                                                                pv.razon_social,
+                                                                fc.fact_total,
+                                                                nc.nota_total,
+                                                                nc.nota_fecha,
+                                                                u.username,
+                                                                pe.personal_nombre,
+                                                                pe.personal_apellido
+                                                            FROM nota_debito nc
+                                                            JOIN facturas_compra fc ON nc.fact_id = fc.fact_id
+                                                            JOIN orden_compras oc ON fc.orden_id = oc.orden_id
+                                                            JOIN usuarios u ON oc.id_usuario = u.id_usuario
+                                                            JOIN personal pe ON u.personal_id = pe.personal_id
+                                                            JOIN proveedor pv ON oc.cod_proveedor = pv.cod_proveedor
+                                                            ORDER BY fc.fact_id DESC");
 
-                                        // Generar filas JOIN personal pe ON u.personal_id = pe.personal_id
+                                        // Generar filas
                                         while ($data = $query->fetch(PDO::FETCH_ASSOC)) {
                                             echo '<tr>
-                                                    <td>' . htmlspecialchars($data['pedido_id']) . '</td>
-                                                    <td>' . htmlspecialchars($data['pedido_fecha']) . '</td>
-                                                    <td>' . htmlspecialchars($data['pedido_hora']) . '</td>
-                                                    <td>' . htmlspecialchars($data['estado']) . '</td>
+                                                    <td>' . htmlspecialchars($data['nota_debito_id']) . '</td>
+                                                    <td>' . htmlspecialchars($data['nota_estado']) . '</td>
+                                                    <td>' . htmlspecialchars($data['razon_social']) . '</td>
+                                                    <td>' . htmlspecialchars($data['fact_total']) . '</td>
+                                                    <td>' . htmlspecialchars($data['nota_total']) . '</td>
+                                                    <td>' . htmlspecialchars($data['nota_fecha']) . '</td>
                                                     <td>
-                                                        <button type="button" class="btn btn-info btn-sm btn-detalle" data-id="' . $data['pedido_id'] . '">
+                                                        <button type="button" class="btn btn-info btn-sm btn-detalle" data-id="' . $data['nota_debito_id'] . '">
                                                             Ver Detalle
                                                         </button>
                                                     </td>
                                                     <td>' . htmlspecialchars($data['username']) . '</td>
-
+                                                    <td>' . htmlspecialchars($data['personal_nombre']) . '</td>
+                                                    <td>' . htmlspecialchars($data['personal_apellido']) . '</td>
                                                     <td>
-                                                        <a href="proses.php?act=anular&ped_id=' . htmlspecialchars($data['pedido_id']) . '" 
+                                                        <a href="proses.php?act=anular_nota_debito&nota_id=' . htmlspecialchars($data['nota_debito_id']) . '" 
                                                             class="btn btn-danger btn-sm" 
                                                             onclick="return confirm(\'¿Seguro que deseas anular este pedido?\')">
                                                             <i class="fas fa-trash"></i>
                                                         </a>
-                                                        <a href="reporte.php?ped_id=' . htmlspecialchars($data['pedido_id']) . '" 
+                                                        <a href="reporte.php?nota_debito_id=' . htmlspecialchars($data['nota_debito_id']) . '" 
                                                             target="_blank" 
                                                             class="btn btn-warning btn-sm">
                                                             <i class="fas fa-print"></i>
@@ -594,40 +604,44 @@ try {
         <!-- End of Content Wrapper -->
 
             <!-- Modal para Cerrar Sesión -->
-        <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
-                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
-                        <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
+            <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
 
     </div>
     
         <div class="modal fade" id="detalleModal" tabindex="-1" aria-labelledby="detalleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="detalleModalLabel">Detalle del Pedido</h5>
+                    <h5 class="modal-title" id="detalleModalLabel">Detalle de la nota débito</h5>
                     <button type="button" class="btn-close" data-dismiss="modal" aria-label="Cerrar"> <span aria-hidden="true">&times;</span> </button>
                 </div>
                 <div class="modal-body">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
+                                <th>Numero de Factura</th>
+                                <th>Motivo</th>
                                 <th>Producto</th>
+                                <th>Precio</th>
                                 <th>Cantidad</th>
+                                <th>Sub total</th>
+                                <th>Cargo adicional</th>
                             </tr>
                         </thead>
                         <tbody id="detallePedidoBody">
@@ -692,7 +706,7 @@ try {
                 const pedidoId = this.getAttribute('data-id');
                 
                 // Realiza una solicitud AJAX para obtener los detalles
-                fetch(`get_detalle.php?ped_id=${pedidoId}`)
+                fetch(`get_detalle.php?nota_id=${pedidoId}`)
                     .then(response => response.json())
                     .then(data => {
                         const detalleBody = document.getElementById('detallePedidoBody');
@@ -701,8 +715,14 @@ try {
                         // Generar filas para cada detalle
                         data.forEach(detalle => {
                             const row = `<tr>
-                                <td>${detalle.nombre_producto}</td>
+                                <td>${detalle.factura}</td>
+                                <td>${detalle.motivo}</td>
+                                <td>${detalle.producto}</td>
+                                <td>${detalle.precio}</td>
                                 <td>${detalle.cantidad}</td>
+                                <td>${detalle.subtotal}</td>
+                                <td>${detalle.cargo_adicional}</td>
+                            
                             </tr>`;
                             detalleBody.innerHTML += row;
                         });

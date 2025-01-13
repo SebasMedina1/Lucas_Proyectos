@@ -205,23 +205,36 @@ function actualizarTotales() {
         const precio = parseFloat(row.querySelector('.precio').value) || 0;
         const tipoIva = parseFloat(row.querySelector('.iva').textContent) || 0;
 
-        // Calcular monto del IVA
-        const montoIva = cantidad * precio * (tipoIva / 100);
+        let montoIva = 0;
 
-        // Calcular subtotal incluyendo IVA
-        const subtotal = cantidad * precio + montoIva;
+        // Calcular monto del IVA según el tipo de IVA
+        if (tipoIva === 10) {
+            montoIva = Math.floor(precio / 11); // Tomar solo la parte entera
+        } else if (tipoIva === 5) {
+            montoIva = Math.floor(precio / 21); // Tomar solo la parte entera
+        } else {
+            montoIva = 0; // IVA 0%
+        }
+
+        // Calcular el subtotal
+        const subtotal = Math.floor(cantidad * precio); // Tomar solo la parte entera
+
+        // Calcular el monto de IVA total
+        const totalIva = Math.floor(montoIva * cantidad); // Tomar solo la parte entera
 
         // Actualizar los valores en la fila
-        row.querySelector('.monto-iva').textContent = montoIva.toFixed(2);
-        row.querySelector('.subtotal').textContent = subtotal.toFixed(2);
+        row.querySelector('.monto-iva').textContent = `${totalIva}.00`;
+        row.querySelector('.subtotal').textContent = `${subtotal}.00`;
 
         // Sumar al total general
-        totalImporte += subtotal;
+        totalImporte += subtotal + totalIva;
     });
 
     // Actualizar el total general en el campo correspondiente
-    document.getElementById('total_importe').value = totalImporte.toFixed(2);
+    document.getElementById('total_importe').value = `${Math.floor(totalImporte)}.00`;
 }
+
+
 
 // Manejar la modificación de cantidad o precio para recalcular en tiempo real
 document.querySelector('#tabla-productos').addEventListener('input', function (e) {

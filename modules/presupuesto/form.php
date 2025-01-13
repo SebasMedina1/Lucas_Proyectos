@@ -198,27 +198,27 @@ document.getElementById('pedido').addEventListener('change', async function () {
 // Función para recalcular IVA y Subtotal en una fila específica
 function recalcularFila(row) {
     const cantidad = parseFloat(row.querySelector('.cantidad').value) || 0;
-    const precio = parseFloat(row.querySelector('.precio').value) || 0;
+    const precio = parseFloat(row.querySelector('.precio').value.replace(/\./g, '').replace(',', '.')) || 0;
     const iva = parseFloat(row.querySelector('.iva').textContent) || 0;
 
     let montoIVA = 0;
 
-    // Calcular el monto del IVA según la legislación paraguaya
     if (iva === 10) {
-        montoIVA = precio / 21; // IVA 10%
+        montoIVA = Math.floor(precio / 11); // Tomar solo la parte entera
     } else if (iva === 5) {
-        montoIVA = precio / 11; // IVA 5%
-    } else {
-        montoIVA = 0; // IVA 0%
+        montoIVA = Math.floor(precio / 21); // Tomar solo la parte entera
     }
 
-    // Calcular el subtotal con IVA incluido
+    // Calcular el subtotal
     const subtotal = cantidad * precio;
 
-    // Actualizar la columna del subtotal y el monto del IVA
-    row.querySelector('.subtotal').textContent = isNaN(subtotal) ? '0' : subtotal.toFixed(2);
-    row.querySelector('.monto_iva').textContent = (montoIVA * cantidad).toFixed(2);
+    // Actualizar los valores en la tabla
+    row.querySelector('.subtotal').textContent = `${subtotal}.00`;
+    row.querySelector('.monto_iva').textContent = `${montoIVA * cantidad}.00`;
 }
+
+
+
 
 
 // Calcular y mostrar los totales al cambiar cantidad o precio
@@ -236,13 +236,14 @@ function actualizarTotales() {
 
     document.querySelectorAll('#tabla-productos tbody tr').forEach(row => {
         const subtotal = parseFloat(row.querySelector('.subtotal').textContent) || 0;
+        const montoIVA = parseFloat(row.querySelector('.monto_iva').textContent) || 0;
 
-        // Sumar al total
-        totalImporte += subtotal;
+        // Sumar al total el subtotal más el monto del IVA
+        totalImporte += subtotal + montoIVA;
     });
 
-    // Mostrar el total actualizado con IVA incluido
-    document.getElementById('total_importe').value = totalImporte.toFixed(2);
+    // Mostrar el total actualizado con IVA incluido y separador de miles
+    document.getElementById('total_importe').value = `${Math.floor(totalImporte)}.00`;
 }
 
 // Manejar la eliminación de filas
@@ -320,6 +321,38 @@ function mostrarModal(titulo, mensaje, tipo, recargar = false) {
         document.getElementById('modalMensaje').remove(); // Eliminar el modal del DOM
     });
 }
+
+
+
+    const btnGuardar = document.querySelector('button[name="Guardar"]');
+    const tablaProductos = document.getElementById('tabla-productos').querySelector('tbody');
+
+    // Validar cantidad y precio en tiempo real
+    tablaProductos.addEventListener('input', function (e) {
+        if (e.target.classList.contains('cantidad') || e.target.classList.contains('precio')) {
+            validarFormulario();
+        }
+    });
+
+    // Validar que el formulario esté completo y correcto
+    function validarFormulario() {
+        let formularioValido = true;
+
+        document.querySelectorAll('#tabla-productos tbody tr').forEach(row => {
+            const cantidad = parseFloat(row.querySelector('.cantidad').value) || 0;
+            const precio = parseFloat(row.querySelector('.precio').value) || 0;
+
+            if (cantidad < 1 || precio < 1) {
+                formularioValido = false;
+            }
+        });
+
+        btnGuardar.disabled = !formularioValido;
+    }
+
+    // Inicializar el estado del botón "Guardar"
+    validarFormulario();
+
 </script>
 
 
@@ -341,6 +374,10 @@ function mostrarModal(titulo, mensaje, tipo, recargar = false) {
         </div>
     </div>
 </div>
+
+
+
+
 
 
 

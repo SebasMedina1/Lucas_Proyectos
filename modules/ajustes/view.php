@@ -24,6 +24,7 @@
     $username = $_SESSION['username'];
     
     try {
+        
         // Crear conexión con PostgreSQL usando PDO
         $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
         $pdo = new PDO($dsn, $user, $pass);
@@ -106,84 +107,118 @@
     <!-- Divider -->
     <hr class="sidebar-divider my-0">
 
-    <!-- Nav Item - Dashboard -->
-    <li class="nav-item active">
-        <a class="nav-link" href="../../index.php">
-            <i class="fas fa-fw fa-tachometer-alt"></i>
-            <span>Inicio</span></a>
-    </li>
+<!-- Nav Item - Dashboard -->
+<li class="nav-item active">
+    <a class="nav-link" href="../../index.php">
+        <i class="fas fa-fw fa-tachometer-alt"></i>
+        <span>Inicio</span></a>
+</li>
+<li class="nav-item active">
+<a class="nav-link" href="./manual.pdf" target="_blank">
+<i class="fas fa-fw fa-tachometer-alt"></i>
+<span>Manual de Usuario</span>
+</a>
+</li>
 
-    <!-- Divider -->
-    <hr class="sidebar-divider">
+<!-- Divider -->
+<hr class="sidebar-divider">
 
-    <!-- Heading -->
-    <div class="sidebar-heading">
-        Referenciales
-    </div>
+<!-- Heading -->
+<div class="sidebar-heading">
+    Referenciales
+</div>
 
-    <!-- Nav Item - Pages Collapse Menu -->
-    <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-                        aria-expanded="true" aria-controls="collapseTwo">
-                        <i class="fas fa-fw fa-cog"></i>
-                        <span>Compras</span>
-                    </a>
-                    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="../materia_prima/view.php">Materia prima</a>
-                        <a class="collapse-item" href="../proveedores/view.php">Proveedores</a>
-                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-                        </div>
-                    </div>
-    </li>
-
-    <!-- Nav Item - Utilities Collapse Menu -->
+<!-- Nav Item - Pages Collapse Menu -->
+<li class="nav-item">
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
+        aria-expanded="true" aria-controls="collapseTwo">
+        <i class="fas fa-fw fa-cog"></i>
+        <span>Compras</span>
+    </a>
+    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+        <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
+        <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
+        <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
+        <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>  
 
 
-    <!-- Divider -->
-    <hr class="sidebar-divider">
-
-    <!-- Heading -->
-    <div class="sidebar-heading">
-        Movimientos
-    </div>
-
-    <!-- Nav Item - Pages Collapse Menu -->
-    <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-                    aria-expanded="true" aria-controls="collapsePages">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Compras</span>
-                </a>
-                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
-                        <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
-                        <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
-                        <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>
-                        <a class="collapse-item" href="../nota_credito/view.php">Nota de credito</a>
-                        <a class="collapse-item" href="../nota_remision/view.php">Nota de Remision</a>
-                        <a class="collapse-item" href="../ajustes/view.php">Ajustes</a>
-                        <div class="collapse-divider"></div>
-                    </div>
-                </div>
-            </li>
-    <!-- Nav Item - Pages Collapse Menu -->
-    <li class="nav-item">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
-            aria-expanded="true" aria-controls="collapseAdm">
-            <i class="fas fa-fw fa-folder"></i>
-            <span>Administración</span>
-        </a>
-        <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-            <div class="bg-white py-2 collapse-inner rounded">
-                <a class="collapse-item" href="../usuario/ciew.php">Usuarios</a>
-                <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-            </div>
         </div>
-    </li>
+    </div>
+</li>
 
+
+<!-- Divider -->
+<hr class="sidebar-divider">
+
+<!-- Heading -->
+<div class="sidebar-heading">
+    Movimientos
+</div>
+
+<!-- Nav Item - Pages Collapse Menu -->
+<li class="nav-item">
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
+        aria-expanded="true" aria-controls="collapsePages">
+        <i class="fas fa-fw fa-folder"></i>
+        <span>Referenciales</span>
+    </a>
+    <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+
+            <!-- Categoría: Ajustes -->
+            <h6 class="collapse-header">Ajustes:</h6>
+            <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
+            <a class="collapse-item" href="../stock/view.php">Stock</a>
+            <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
+            <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
+
+            <!-- Divisor -->
+            <div class="collapse-divider"></div>
+
+            <!-- Categoría: Productos -->
+            <h6 class="collapse-header">Gestión de Productos:</h6>
+            <a class="collapse-item" href="../producto/view.php">Producto</a>
+            <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
+
+            <!-- Divisor -->
+            <div class="collapse-divider"></div>
+
+            <!-- Categoría: Proveedores y Depósitos -->
+            <h6 class="collapse-header">Proveedores y Depósitos:</h6>
+            <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
+            <a class="collapse-item" href="../deposito/view.php">Depósito</a>
+
+            <!-- Divisor -->
+            <div class="collapse-divider"></div>
+
+            <!-- Categoría: Localización 
+            <h6 class="collapse-header">Localización:</h6>
+            <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
+            <a class="collapse-item" href="../departamento/view.php">Departamento</a>
+            -->
+        </div>
+    </div>
+</li>
+
+
+
+
+</li>
+<!-- Nav Item - Pages Collapse Menu -->
+<li class="nav-item">
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
+        aria-expanded="true" aria-controls="collapseAdm">
+        <i class="fas fa-fw fa-folder"></i>
+        <span>Administración</span>
+    </a>
+    <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
+            <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
+        </div>
+    </div>
+</li>
 
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">
@@ -379,29 +414,26 @@
 
                 <!-- Nav Item - User Information -->
                 <li class="nav-item dropdown no-arrow">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                            <?php echo htmlspecialchars($auth_user['username']); ?>
-                        </span>
-
-                        <img class="img-profile rounded-circle"
-                            src="../../img/undraw_profile.svg">
-                    </a>
-                    <!-- Dropdown - User Information -->
-                    <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                        aria-labelledby="userDropdown">
-                        <a class="dropdown-item" href="../../modules/usuario/view.php">
-                            <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                Perfil
-                                    </a>
-                                    <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                        Cerrar sesión
-                    </a>
-                    </div>
-                </li>
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($auth_user['username']); ?></span>
+                                <img class="img-profile rounded-circle"
+                                    src="../../img/undraw_profile.svg">
+                            </a>
+                            <!-- Dropdown - User Information -->
+                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                                aria-labelledby="userDropdown">
+                                <a class="dropdown-item" href="../usuario/view.php">
+                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Perfil
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Cerrar sesión
+                                </a>
+                            </div>
+            </li>
 
             </ul>
 
@@ -420,32 +452,59 @@
                                 </a>
                             </div>
 
-                            <!-- Alert Messages -->
-                            <!-- Alert Messages -->
-                            <?php 
-                                if (!empty($_GET['alert'])) {
-                                    $alertMessage = '';
-                                    $alertClass = 'alert-success'; // Clase por defecto
+                        <!-- Alert Messages -->
+                        <?php 
+                            if (!empty($_GET['alert'])) {
+                                $alertMessage = '';
+                                $alertClass = 'alert-success'; // Clase por defecto
 
-                                    if ($_GET['alert'] == 1) {
-                                        $alertMessage = "Datos registrados correctamente.";
-                                    } elseif ($_GET['alert'] == 2) {
-                                        $alertMessage = "Datos modificados correctamente.";
-                                    } elseif ($_GET['alert'] == 3) {
-                                        $alertMessage = "Registro Anulado correctamente.";
-                                    } elseif ($_GET['alert'] == 4) {
-                                        $alertMessage = "No se pudo realizar la operación.";
-                                        $alertClass = 'alert-danger'; 
-                                    }
-
-                                    echo "<div id='alert-message' class='alert $alertClass alert-dismissible fade show' role='alert'>";
-                                    echo $alertMessage;
-                                    echo "<button type='button' class='close' data-dismiss='alert' aria-label='Close'>";
-                                    echo "<span aria-hidden='true'>&times;</span>";
-                                    echo "</button>";
-                                    echo "</div>";
+                                if ($_GET['alert'] == 1) {
+                                    $alertMessage = "Datos registrados correctamente.";
+                                } elseif ($_GET['alert'] == 2) {
+                                    $alertMessage = "Datos modificados correctamente.";
+                                } elseif ($_GET['alert'] == 3) {
+                                    $alertMessage = "Registro anulado correctamente.";
+                                } elseif ($_GET['alert'] == 4) {
+                                    $alertMessage = "No se pudo realizar la operación.";
+                                    $alertClass = 'alert-danger'; 
+                                } elseif ($_GET['alert'] == 5) {
+                                    $alertMessage = "El ajuste seleccionado ya está anulado.";
+                                    $alertClass = 'alert-danger'; 
                                 }
+
+                                echo "<div id='alert-message' class='alert $alertClass alert-dismissible fade show' role='alert'>";
+                                echo $alertMessage;
+                                echo "<button type='button' class='close' data-dismiss='alert' aria-label='Close'>";
+                                echo "<span aria-hidden='true'>&times;</span>";
+                                echo "</button>";
+                                echo "</div>";
+                            }
                             ?>
+                            <script>
+                                // Ocultar el mensaje de alerta automáticamente después de 3 segundos
+                                setTimeout(function() {
+                                    var alertMessage = document.getElementById('alert-message');
+                                    if (alertMessage) {
+                                        alertMessage.style.display = 'none';
+                                    }
+                                }, 3000);
+                            </script>
+
+                            <!-- Botón con menú desplegable para seleccionar el estado del ajuste -->
+                            <div class="d-flex justify-content-start mb-3">
+                                <div class="dropdown">
+                                    <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Imprimir Ajustes
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                        <li><a class="dropdown-item" href="reporte_estado.php?estado=PROCESADO" target="_blank">PROCESADOS</a></li>
+                                        <li><a class="dropdown-item" href="reporte_estado.php?estado=ANULADO" target="_blank">ANULADOS</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+
 
                             <!-- DataTable -->
                             <div class="card shadow mb-4">
@@ -477,12 +536,13 @@
                                             // Consultar datos
                                             $query = $pdo->query("SELECT 
                                                                     aj.ajuste_id, 
-                                                                    aj.ajuste_motivo,
+                                                                    ma.motivo_descripcion,
                                                                     aj.ajuste_fecha,
                                                                     dp.descrip,
                                                                     aj.ajuste_estado
                                                                 FROM ajustes aj
                                                                 JOIN ajuste_detalle ad ON aj.ajuste_id = ad.ajuste_id
+                                                                JOIN motivo_ajuste ma ON aj.motivo_id = ma.motivo_id
                                                                 JOIN deposito dp ON aj.cod_deposito = dp.cod_deposito
                                                                 ORDER BY aj.ajuste_id DESC");
     
@@ -490,7 +550,7 @@
                                             while ($data = $query->fetch(PDO::FETCH_ASSOC)) {
                                                 echo '<tr>
                                                         <td>' . htmlspecialchars($data['ajuste_id']) . '</td>
-                                                        <td>' . htmlspecialchars($data['ajuste_motivo']) . '</td>
+                                                        <td>' . htmlspecialchars($data['motivo_descripcion']) . '</td>
                                                         <td>' . htmlspecialchars($data['ajuste_fecha']) . '</td>
                                                         <td>' . htmlspecialchars($data['descrip']) . '</td>
                                                         <td>' . htmlspecialchars($data['ajuste_estado']) . '</td>
@@ -505,7 +565,7 @@
                                                                 onclick="return confirm(\'¿Seguro que deseas anular este pedido?\')">
                                                                 <i class="fas fa-trash"></i>
                                                             </a>
-                                                            <a href="libs/fpdf/reporteCompra.php?ajuste_id=' . htmlspecialchars($data['ajuste_id']) . '" 
+                                                            <a href="reporte.php?ajuste_id=' . htmlspecialchars($data['ajuste_id']) . '" 
                                                                 target="_blank" 
                                                                 class="btn btn-warning btn-sm">
                                                                 <i class="fas fa-print"></i>
@@ -543,22 +603,42 @@
                 <!-- End of Footer -->
             </div>
             <!-- End of Content Wrapper -->
+
+                <!-- Modal para Cerrar Sesión -->
+            <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
         
             <div class="modal fade" id="detalleModal" tabindex="-1" aria-labelledby="detalleModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="detalleModalLabel">Detalle de la nota credito</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        <h5 class="modal-title" id="detalleModalLabel">Detalles del ajuste realizado</h5>
+                        <button type="button" class="btn-close" data-dismiss="modal" aria-label="Cerrar"> <span aria-hidden="true">&times;</span> </button>
                     </div>
                     <div class="modal-body">
                     <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Materia Prima</th>
-                                    <th>Cantidad</th>
-                                    <th>Iva</th>
+                                    <th>Producto</th>
+                                    <th>Cantidad ajustada</th>
+                                    
                                 </tr>
                             </thead>
                             <tbody id="detallePedidoBody">
@@ -623,7 +703,7 @@
                     const pedidoId = this.getAttribute('data-id');
                     
                     // Realiza una solicitud AJAX para obtener los detalles
-                    fetch(`get_detalle.php?remision_id=${pedidoId}`)
+                    fetch(`get_detalle.php?ajuste_id=${pedidoId}`)
                         .then(response => response.json())
                         .then(data => {
                             const detalleBody = document.getElementById('detallePedidoBody');
@@ -632,9 +712,8 @@
                             // Generar filas para cada detalle
                             data.forEach(detalle => {
                                 const row = `<tr>
-                                    <td>${detalle.materia_prima}</td>
+                                    <td>${detalle.producto}</td>
                                     <td>${detalle.cantidad}</td>
-                                    <td>${detalle.iva} %</td>
                                 </tr>`;
                                 detalleBody.innerHTML += row;
                             });

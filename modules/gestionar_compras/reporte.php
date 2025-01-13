@@ -33,7 +33,6 @@
                 f.fact_total,
                 f.fact_estado,
                 p.razon_social,
-                f.fact_plazo,
                 f.fact_inicio,
                 f.fact_vencimiento,
                 u.username,
@@ -80,9 +79,8 @@
         $pdf->Cell(50, 8, 'Estado:', 0, 0, 'L');
         $pdf->Cell(100, 8, $factura['fact_estado'], 0, 1, 'L');
 
-        // Mostrar Plazo, Fecha de Inicio y Vencimiento
-        $pdf->Cell(50, 8, 'Plazo:', 0, 0, 'L');
-        $pdf->Cell(100, 8, $factura['fact_plazo'] . ' cuotas', 0, 1, 'L');
+        // Mostrar Fecha de Inicio y Vencimiento
+
         $pdf->Cell(50, 8, 'Fecha de Inicio:', 0, 0, 'L');
         $pdf->Cell(100, 8, $factura['fact_inicio'], 0, 1, 'L');
         $pdf->Cell(50, 8, 'Fecha de Vencimiento:', 0, 0, 'L');
@@ -136,7 +134,7 @@
         // Agregar Total debajo de la tabla y alinearlo a la derecha
         $pdf->Ln(5);
         $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(170, 8, 'Total: ' . number_format($factura['fact_total'], 0, '', '.'), 0, 1, 'R'); // Total alineado a la derecha
+        $pdf->Cell(170, 8, 'Total: ' . $factura['fact_total'] . ' Gs', 0, 1, 'R');
 
         // Mostrar el PDF en el navegador
         $pdf->Output('I', "Detalle_Factura_$fact_id.pdf");

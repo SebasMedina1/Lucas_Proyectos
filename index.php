@@ -133,7 +133,8 @@ try {
             <li class="nav-item active">
                 <a class="nav-link" href="index.php">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
-                    <span>Inicio</span></a>
+                    <span>Inicio</span>
+                </a>
             </li>
             <li class="nav-item active">
     <a class="nav-link" href="./manual.pdf" target="_blank">
@@ -160,34 +161,15 @@ try {
                 <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
                     <a class="collapse-item" href="modules/pedido_compra/view.php">Pedidos de compras</a>
-                    <a class="collapse-item" href="modules/orden_compra/view.php">Orden de compra</a>
                     <a class="collapse-item" href="modules/presupuesto/view.php">Presupuesto</a>
+                    <a class="collapse-item" href="modules/orden_compra/view.php">Orden de compra</a>
                     <a class="collapse-item" href="modules/gestionar_compras/view.php">Gestionar Compras</a>  
-                    <a class="collapse-item" href="modules/ajustes/view.php">Ajuste de inventario</a> 
-                    <a class="collapse-item" href="modules/producto/view.php">Producto</a>
-                    <a class="collapse-item" href="modules/proveedor/view.php">Proveedores</a>
-                    <a class="collapse-item" href="modules/u_medida/view.php">Unidades de Medida</a>
-                    <a class="collapse-item" href="modules/deposito/view.php">Depósito</a>
-                    <a class="collapse-item" href="modules/departamento/view.php">Departamento</a>
+
+
                     </div>
                 </div>
             </li>
 
-            <!-- Nav Item - Utilities Collapse Menu -->
-            <!--<li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUtilities"
-                    aria-expanded="true" aria-controls="collapseUtilities">
-                    <i class="fas fa-fw fa-wrench"></i>
-                    <span>Ventas</span>
-                </a>
-                <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities"
-                    data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="modules/ventas/view.php">Registrar ventas</a>
-                        <a class="collapse-item" href="modules/clientes/view.php">Cliente</a>
-                    </div>
-                </div>
-            </li> -->
 
             <!-- Divider -->
             <hr class="sidebar-divider">
@@ -197,25 +179,55 @@ try {
                 Movimientos
             </div>
 
-           <!-- Nav Item - Pages Collapse Menu -->
-           <li class="nav-item">
-            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-                aria-expanded="true" aria-controls="collapsePages">
-                <i class="fas fa-fw fa-folder"></i>
-                <span>Referenciales</span>
-            </a>
-            <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-                <div class="bg-white py-2 collapse-inner rounded">
-                    
-                    <a class="collapse-item" href="modules/presupuesto/view.php">Presupuesto</a>
-                    <a class="collapse-item" href="modules/nota_remision/view.php">Nota de Remision</a>
-                    <a class="collapse-item" href="modules/gestionar_compras/view.php">Gestionar Compras</a>
-                    <a class="collapse-item" href="modules/nota_credito/view.php">Nota de credito</a>
-                    <a class="collapse-item" href="modules/ajustes/view.php">Ajustes</a>
-                    <div class="collapse-divider"></div>
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
+                    aria-expanded="true" aria-controls="collapsePages">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Referenciales</span>
+                </a>
+                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+
+                        <!-- Categoría: Ajustes -->
+                        <h6 class="collapse-header">Ajustes:</h6>
+                        <a class="collapse-item" href="modules/ajustes/view.php">Ajuste de Inventario</a>
+                        <a class="collapse-item" href="modules/stock/view.php">Stock</a>
+                        <a class="collapse-item" href="modules/nota_credito/view.php">Nota Crédito</a>
+                        <a class="collapse-item" href="modules/nota_debito/view.php">Nota Débito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Productos -->
+                        <h6 class="collapse-header">Gestión de Productos:</h6>
+                        <a class="collapse-item" href="modules/producto/view.php">Producto</a>
+                        <a class="collapse-item" href="modules/u_medida/view.php">Unidades de Medida</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Proveedores y Depósitos -->
+                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
+                        <a class="collapse-item" href="modules/proveedor/view.php">Proveedores</a>
+                        <a class="collapse-item" href="modules/deposito/view.php">Depósito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Localización -->
+                        <h6 class="collapse-header">Localización:</h6>
+                        <a class="collapse-item" href="modules/ciudad/view.php">Ciudad</a>
+                        <a class="collapse-item" href="modules/departamento/view.php">Departamento</a>
+
+                    </div>
                 </div>
-            </div>
-        </li>
+            </li>
+
+
+
+
+    </li>
             <!-- Nav Item - Pages Collapse Menu -->
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
@@ -696,15 +708,15 @@ try {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">¿Estás seguro?</h5>
                     <button class="close" type="button" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">×</span>
                     </button>
                 </div>
-                <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+                <div class="modal-body">Seleccione "Cerrar sesión" si está listo para finalizar su sesión actual.</div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="login.html">Logout</a>
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                    <a class="btn btn-primary" href="login.html">Cerrar sesión</a>
                 </div>
             </div>
         </div>

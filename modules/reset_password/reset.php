@@ -87,95 +87,118 @@ if (!$auth_user) {
 <!-- Divider -->
 <hr class="sidebar-divider my-0">
 
-<!-- Nav Item - Dashboard -->
-<li class="nav-item active">
-    <a class="nav-link" href="../../index.php">
+            <!-- Nav Item - Dashboard -->
+            <li class="nav-item active">
+                <a class="nav-link" href="../../index.php">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>Inicio</span></a>
+            </li>
+            <li class="nav-item active">
+    <a class="nav-link" href="./manual.pdf" target="_blank">
         <i class="fas fa-fw fa-tachometer-alt"></i>
-        <span>Inicio</span></a>
-</li>
-
-<!-- Divider -->
-<hr class="sidebar-divider">
-
-<!-- Heading -->
-<div class="sidebar-heading">
-    Referenciales
-</div>
-
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-        aria-expanded="true" aria-controls="collapseTwo">
-        <i class="fas fa-fw fa-cog"></i>
-        <span>Compras</span>
+        <span>Manual de Usuario</span>
     </a>
-    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            
-            <a class="collapse-item" href="../compras/view.php">Ver / registrar</a>
-            <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-            <a class="collapse-item" href="../stock/view.php">Stock</a>
-            <a class="collapse-item" href="../proveedor/view.php">Proveedor</a>
-        </div>
-    </div>
 </li>
 
-<!-- Nav Item - Utilities Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUtilities"
-        aria-expanded="true" aria-controls="collapseUtilities">
-        <i class="fas fa-fw fa-wrench"></i>
-        <span>Ventas</span>
-    </a>
-    <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities"
-        data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="../ventas/view.php">Registrar ventas</a>
-            <a class="collapse-item" href="../clientes/view.php">Cliente</a>
-        </div>
-    </div>
-</li>
+            <!-- Divider -->
+            <hr class="sidebar-divider">
 
-<!-- Divider -->
-<hr class="sidebar-divider">
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Referenciales
+            </div>
 
-<!-- Heading -->
-<div class="sidebar-heading">
-    Centro de control
-</div>
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
+                    aria-expanded="true" aria-controls="collapseTwo">
+                    <i class="fas fa-fw fa-cog"></i>
+                    <span>Compras</span>
+                </a>
+                <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
+                    <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
+                    <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
+                    <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>  
 
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-<a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-    aria-expanded="true" aria-controls="collapsePages">
-    <i class="fas fa-fw fa-folder"></i>
-    <span>Servicios</span>
-</a>
-<div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-    <div class="bg-white py-2 collapse-inner rounded">
-        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
-        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
-        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-        <a class="collapse-item" href="../producto/view.php">Producto</a>
-        <a class="collapse-item" href="../tipo_producto/view.php">Tipo producto</a>
-        <div class="collapse-divider"></div>
-    </div>
-</div>
-</li>
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
-        aria-expanded="true" aria-controls="collapseAdm">
-        <i class="fas fa-fw fa-folder"></i>
-        <span>Administración</span>
-    </a>
-    <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="usuarios.html">Usuarios</a>
-            <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-        </div>
-    </div>
-</li>
+
+                    </div>
+                </div>
+            </li>
+
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Movimientos
+            </div>
+
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
+                    aria-expanded="true" aria-controls="collapsePages">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Referenciales</span>
+                </a>
+                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+
+                        <!-- Categoría: Ajustes -->
+                        <h6 class="collapse-header">Ajustes:</h6>
+                        <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
+                        <a class="collapse-item" href="../stock/view.php">Stock</a>
+                        <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
+                        <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Productos -->
+                        <h6 class="collapse-header">Gestión de Productos:</h6>
+                        <a class="collapse-item" href="../producto/view.php">Producto</a>
+                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Proveedores y Depósitos -->
+                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
+                        <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
+                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
+
+                        <!-- Divisor -->
+                        <div class="collapse-divider"></div>
+
+                        <!-- Categoría: Localización 
+                        <h6 class="collapse-header">Localización:</h6>
+                        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
+                        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
+                        -->
+                    </div>
+                </div>
+            </li>
+
+
+
+
+    </li>
+            <!-- Nav Item - Pages Collapse Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
+                    aria-expanded="true" aria-controls="collapseAdm">
+                    <i class="fas fa-fw fa-folder"></i>
+                    <span>Administración</span>
+                </a>
+                <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
+                        <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
+                    </div>
+                </div>
+            </li>
 
 
 <!-- Divider -->
@@ -372,19 +395,16 @@ if (!$auth_user) {
 
             <!-- Nav Item - User Information -->
             <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                        <?php echo htmlspecialchars($auth_user['name_user']); ?>
-                    </span>
-
-                    <img class="img-profile rounded-circle"
-                        src="../../img/undraw_profile.svg">
-                </a>
-                                            <!-- Dropdown - User Information -->
-                                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($auth_user['username']); ?></span>
+                                <img class="img-profile rounded-circle"
+                                    src="../../img/undraw_profile.svg">
+                            </a>
+                            <!-- Dropdown - User Information -->
+                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                 aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="../../modules/usuario/view.php">
+                                <a class="dropdown-item" href="../usuario/view.php">
                                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Perfil
                                 </a>
@@ -447,16 +467,50 @@ if (!$auth_user) {
 
                                 <!-- Mensajes de alerta -->
                                 <?php
-                                if (!empty($_GET['alert'])) {
-                                    if ($_GET['alert'] == 1) {
-                                        echo "<div class='alert alert-danger mt-3'>La contraseña actual no coincide.</div>";
-                                    } elseif ($_GET['alert'] == 2) {
-                                        echo "<div class='alert alert-danger mt-3'>Las nuevas contraseñas no coinciden.</div>";
-                                    } elseif ($_GET['alert'] == 3) {
-                                        echo "<div class='alert alert-success mt-3'>Contraseña actualizada correctamente.</div>";
+                                    // Mostrar mensaje de alerta si existe un parámetro 'alert' en la URL
+                                    if (!empty($_GET['alert'])) {
+                                        // Definir las clases y el mensaje de la alerta según el valor del parámetro
+                                        $alertClass = '';
+                                        $alertMessage = '';
+
+                                        if ($_GET['alert'] == 1) {
+                                            $alertClass = 'alert-danger';
+                                            $alertMessage = 'La contraseña actual no coincide.';
+                                        } elseif ($_GET['alert'] == 2) {
+                                            $alertClass = 'alert-danger';
+                                            $alertMessage = 'Las nuevas contraseñas no coinciden.';
+                                        } elseif ($_GET['alert'] == 3) {
+                                            $alertClass = 'alert-success';
+                                            $alertMessage = 'Contraseña actualizada correctamente.';
+                                        } elseif ($_GET['alert'] == 4) {
+                                            $alertClass = 'alert-danger';
+                                            $alertMessage = 'Los campos no pueden estar vacíos.';
+                                        }
+
+                                        // Mostrar la alerta solo si hay un mensaje definido
+                                        if (!empty($alertMessage)) {
+                                            echo "<div id='alert-message' class='alert $alertClass alert-dismissible fade show mt-3' role='alert'>";
+                                            echo htmlspecialchars($alertMessage);
+                                            echo "<button type='button' class='close' data-dismiss='alert' aria-label='Close'>";
+                                            echo "<span aria-hidden='true'>&times;</span>";
+                                            echo "</button>";
+                                            echo "</div>";
+                                        }
                                     }
-                                }
-                                ?>
+                                    ?>
+
+                                    <!-- Script para ocultar automáticamente el mensaje de alerta -->
+                                    <script>
+                                        setTimeout(function () {
+                                            var alertMessage = document.getElementById('alert-message');
+                                            if (alertMessage) {
+                                                alertMessage.style.display = 'none';
+                                            }
+                                        }, 3000);
+                                    </script>
+
+                                
+                                
                             </div>
                         </div>
                     </div>
@@ -489,6 +543,26 @@ if (!$auth_user) {
             <!-- End of Footer -->
         </div>
         <!-- End of Content Wrapper -->
+
+            <!-- Modal para Cerrar Sesión -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                    <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div>
     <!-- End of Page Wrapper -->
 
