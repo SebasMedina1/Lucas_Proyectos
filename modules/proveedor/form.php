@@ -26,7 +26,7 @@ if (isset($_GET['form_proveedor']) && $_GET['form'] == 'add') { ?>
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                         // Generar el código automáticamente
-                        $query_id = $pdo->query("SELECT MAX(cod_proveedor) AS id FROM proveedor;");
+                        $query_id = $pdo->query("SELECT MAX(id_proveedor) AS id FROM proveedor;");
                         $data_id = $query_id->fetch(PDO::FETCH_ASSOC);
 
                         if ($data_id && $data_id['id'] !== null) {
@@ -41,27 +41,54 @@ if (isset($_GET['form_proveedor']) && $_GET['form'] == 'add') { ?>
                     ?>
                     <div class="form-group">
                         <label for="codigo">Código</label>
-                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo $codigo; ?>" readonly>
+                        <input type="text" class="form-control" id="codigo" name="id_proveedor" value="<?php echo $codigo; ?>" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="descrip_razon">Razón Social</label>
-                        <input type="text" class="form-control" id="descrip_razon" name="descrip_razon" placeholder="Ingrese la razon social " required>
+                        <input type="text" class="form-control" id="descrip_razon" name="razon_social" placeholder="Ingrese la razon social " required>
                     </div>
 
                     <div class="form-group">
                         <label for="descrip_ruc">Ruc</label>
-                        <input type="text" class="form-control" id="descrip_ruc" name="descrip_ruc" placeholder="Ingrese el ruc " required>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="descrip_ruc"
+                            name="ruc_proveedor"
+                            placeholder="Ingrese el RUC"
+                            required
+                            inputmode="numeric"
+                            pattern="^[0-9\-]+$"
+                            title="Solo números y guion (-)"
+                            >
+
                     </div>
 
                     <div class="form-group">
                         <label for="descrip_direccion">Dirección</label>
-                        <input type="text" class="form-control" id="descrip_direccion" name="descrip_direccion" placeholder="Ingrese la dirección " required>
+                        <input type="text" class="form-control" id="descrip_direccion" name="direccion_proveedor" placeholder="Ingrese la dirección " required>
                     </div>
 
                     <div class="form-group">
                         <label for="descrip_telefono">Teléfono</label>
-                        <input type="text" class="form-control" id="descrip_telefono" name="descrip_telefono" placeholder="Ingrese el número de teléfono" required>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="telefono_proveedor"
+                            name="telefono_proveedor"
+                            placeholder="Ingrese el número de teléfono"
+                            required
+                            inputmode="numeric"
+                            pattern="^[0-9]+$"
+                            title="Solo números permitidos"
+                            maxlength="15"
+                        >
+                        </div>
+
+                    <div class="form-group">
+                        <label for="email_proveedor">Email</label>
+                        <input type="email" class="form-control" id="email_proveedor" name="email_proveedor" placeholder="Ingrese el correo electrónico" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" name="Guardar">Guardar</button>
@@ -98,7 +125,7 @@ elseif (isset($_GET['form_proveedor']) && $_GET['form'] == 'edit') {
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // Consultar los datos del proveedor
-            $query = $pdo->prepare("SELECT * FROM proveedor WHERE cod_proveedor = :id");
+            $query = $pdo->prepare("SELECT * FROM proveedor WHERE id_proveedor = :id");
             $query->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
             $query->execute();
             $data = $query->fetch(PDO::FETCH_ASSOC);
@@ -127,23 +154,54 @@ elseif (isset($_GET['form_proveedor']) && $_GET['form'] == 'edit') {
                 <form action="proses.php?act=update" method="POST">
                     <div class="form-group">
                         <label for="codigo">Código</label>
-                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo htmlspecialchars($data['cod_proveedor']); ?>" readonly>
+                        <input type="text" class="form-control" id="codigo" name="id_proveedor" value="<?php echo htmlspecialchars($data['id_proveedor']); ?>" readonly>
                     </div>
                     <div class="form-group">
-                        <label for="descrip_razon">Razón Social</label>
-                        <input type="text" class="form-control" id="descrip_razon" name="descrip_razon" value="<?php echo htmlspecialchars($data['razon_social']); ?>" required>
+                        <label for="razon_social">Razón Social</label>
+                        <input type="text" class="form-control" id="razon_social" name="razon_social" value="<?php echo htmlspecialchars($data['razon_social']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="descrip_ruc">RUC</label>
-                        <input type="text" class="form-control" id="descrip_ruc" name="descrip_ruc" value="<?php echo htmlspecialchars($data['ruc']); ?>" required>
+                        <label for="ruc_proveedor">RUC</label>
+                        <input 
+                            type="text"
+                            class="form-control"
+                            id="descrip_ruc"
+                            name="ruc_proveedor"
+                            placeholder="Ingrese el RUC"
+                            required
+                            inputmode="numeric"
+                            pattern="^[0-9\-]+$"
+                            title="Solo números y guion (-)"
+                            value="<?php echo htmlspecialchars($data['ruc_proveedor'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="descrip_direccion">Dirección</label>
-                        <input type="text" class="form-control" id="descrip_direccion" name="descrip_direccion" value="<?php echo htmlspecialchars($data['direccion']); ?>" required>
+                        <label for="direccion_proveedor">Dirección</label>
+                        <input type="text" class="form-control" id="direccion_proveedor" name="direccion_proveedor" value="<?php echo htmlspecialchars($data['direccion_proveedor'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="descrip_telefono">Teléfono</label>
-                        <input type="text" class="form-control" id="descrip_telefono" name="descrip_telefono" value="<?php echo htmlspecialchars($data['telefono']); ?>" required>
+                        <label for="telefono_proveedor">Teléfono</label>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="telefono_proveedor"
+                            name="telefono_proveedor"
+                            placeholder="Ingrese el número de teléfono"
+                            required
+                            inputmode="numeric"
+                            pattern="^[0-9]+$"
+                            title="Solo números permitidos"
+                            maxlength="15"
+                            value="<?php echo htmlspecialchars($data['telefono_proveedor'] ?? ''); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email_proveedor">Email</label>
+                        <input type="email" class="form-control" id="email_proveedor" name="email_proveedor" value="<?php echo htmlspecialchars($data['email_proveedor'] ?? ''); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estado_proveedor">Estado</label>
+                        <input type="text" class="form-control" id="estado_proveedor" name="estado_proveedor" readonly value="<?php echo htmlspecialchars($data['estado_proveedor'] ?? 'ACTIVO'); ?>" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" name="Guardar">Guardar</button>

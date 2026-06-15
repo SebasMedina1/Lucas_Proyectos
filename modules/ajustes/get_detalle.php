@@ -10,13 +10,13 @@ if (isset($_GET['ajuste_id'])) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $query = $pdo->prepare("SELECT 
-                                    p.p_descrip AS producto, 
-                                    aj.ajuste_cantidad AS cantidad
+                                    mp.materia_prima_descripcion AS producto, 
+                                    ad.ajuste_cantidad AS cantidad
                                 FROM 
-                                    ajuste_detalle aj
+                                    ajustes_detalle ad
                                 JOIN 
-                                    producto p ON aj.cod_producto = p.cod_producto
-                                WHERE aj.ajuste_id = :ped_id");
+                                    materia_prima mp ON ad.id_materia_prima = mp.id_materia_prima
+                                WHERE ad.id_ajuste = :ped_id");
         $query->bindParam(':ped_id', $ped_id, PDO::PARAM_INT);
         $query->execute();
 

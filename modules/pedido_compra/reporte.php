@@ -19,22 +19,21 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Consulta para obtener la información general del pedido
-    $queryGeneral = "
-        SELECT 
-            pc.pedido_id,
-            pc.pedido_fecha, 
-            pc.pedido_hora, 
-            pc.estado, 
+    $queryGeneral = "   SELECT 
+            pc.id_pedido_compra,
+                to_char(pc.pedido_fecha_emision, 'YYYY-MM-DD') AS pedido_fecha,
+                to_char(pc.pedido_fecha_emision, 'HH24:MI:SS') AS pedido_hora,
+            pc.pedido_estado, 
             us.username AS usuario, 
-            suc.sucu_descripcion AS sucursal
+            suc.descripcion_sucursal AS sucursal
         FROM 
-            pedidos_compras pc
+            pedidos_compra pc
         JOIN 
-            sucursales suc ON pc.sucursal_id = suc.sucursal_id
+            sucursales suc ON pc.id_sucursal = suc.id_sucursal
         JOIN 
             usuarios us ON pc.id_usuario = us.id_usuario
         WHERE 
-            pc.pedido_id = :ped_id
+            pc.id_pedido_compra = :ped_id
         LIMIT 1;
     ";
 
@@ -55,7 +54,7 @@ try {
         $pdf->Cell(40, 8, 'Sucursal:', 0, 0, 'L');
         $pdf->Cell(80, 8, $general['sucursal'], 0, 1, 'L');
         $pdf->Cell(40, 8, 'Pedido Nro:', 0, 0, 'L');
-        $pdf->Cell(80, 8, $general['pedido_id'], 0, 1, 'L');
+        $pdf->Cell(80, 8, $general['id_pedido_compra'], 0, 1, 'L');
         $pdf->Ln(10); // Espacio antes de la tabla
     } else {
         $pdf->SetFont('Arial', 'B', 12);
@@ -63,21 +62,21 @@ try {
     }
 
     // Consulta para obtener los detalles del pedido
-    $queryDetails = $queryDetails = "
-    SELECT 
-        p.p_descrip AS producto, 
-        pd.cantidad,
-        pc.estado AS estado
+    $queryDetails = "SELECT 
+        mp.materia_prima_descripcion AS producto, 
+        pd.cantidad_pedido AS cantidad,
+        pc.pedido_estado AS estado
     FROM 
-        detalle_pedidos pd
+        pedido_detalle_compra pd
     JOIN 
-        producto p ON pd.cod_producto = p.cod_producto
+        materia_prima mp ON pd.id_materia_prima = mp.id_materia_prima
     JOIN 
-        pedidos_compras pc ON pd.pedido_id = pc.pedido_id
+        pedidos_compra pc ON pd.id_pedido_compra = pc.id_pedido_compra
     WHERE 
-        pd.pedido_id = :ped_id
+        pd.id_pedido_compra = :ped_id
     ORDER BY 
-        p.p_descrip;
+        mp.materia_prima_descripcion;
+        
 ";
 
 

@@ -1,122 +1,162 @@
 <?php
 require_once '../../config/database.php';
-require_once '../../reporte/orden_compras.php'; // Clase para generar el PDF
+require_once '../../reporte/orden_compras.php'; // Clase BasePDF (FPDF/TCPDF)
 
-// Verificar si se recibió el parámetro 'orden_id'
-if (!isset($_GET['orden_id']) || empty($_GET['orden_id'])) {
+// Validación del parámetro
+if (!isset($_GET['orden_id']) || !ctype_digit($_GET['orden_id'])) {
     die("No se proporcionó un ID de orden válido.");
 }
+$orden_id = (int) $_GET['orden_id'];
 
-$orden_id = intval($_GET['orden_id']); // Convertir a entero
+// Helper: formatear Gs
+function gs($n) { return number_format((float)$n, 0, ',', '.') . ' Gs'; }
+
+// Mapea 'iva_10'/'iva_5' → porcentaje y cálculo por unidad (precio IVA incluido)
+function ivaUnitFromDescri(string $descri, float $precioUnit): int {
+    $k = strtolower(trim($descri));
+    if ($k === 'iva_10') return (int) floor($precioUnit / 11);
+    if ($k === 'iva_5')  return (int) floor($precioUnit / 21);
+    return 0;
+}
 
 $pdf = new BasePDF();
 $pdf->AddPage();
 
-
 try {
-    // Configurar conexión PDO
+    // Conexión PDO
     $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
-    // Consultar datos de la orden de compra
-    $queryOrden = "
+    // ======= CABECERA =======
+    $sqlCab = "
         SELECT 
-            oc.orden_fecha,
-            oc.orden_hora,
+            oc.id_orden_compra,
+            TO_CHAR(oc.orden_fecha, 'YYYY-MM-DD') AS fecha,
+            TO_CHAR(oc.orden_fecha, 'HH24:MI:SS') AS hora,
             oc.orden_estado,
             oc.orden_total,
-
-            p.razon_social AS proveedor,
-            u.username AS usuario,
-            oc.orden_id
-        FROM 
-            orden_compras oc
-        JOIN 
-            proveedor p ON oc.cod_proveedor = p.cod_proveedor
-        JOIN 
-            usuarios u ON oc.id_usuario = u.id_usuario
-        WHERE 
-            oc.orden_id = :orden_id
+            oc.orden_condicion,
+            u.username            AS usuario,
+            s.descripcion_sucursal AS sucursal,
+            pr.razon_social       AS proveedor,
+            oc.id_presupuesto_compra
+        FROM orden_de_compra oc
+        JOIN usuarios   u  ON u.id_usuario  = oc.id_usuario
+        JOIN sucursales s  ON s.id_sucursal = oc.id_sucursal
+        JOIN proveedor  pr ON pr.id_proveedor = oc.id_proveedor
+        WHERE oc.id_orden_compra = :id
+        LIMIT 1;
     ";
+    $stCab = $pdo->prepare($sqlCab);
+    $stCab->execute([':id' => $orden_id]);
+    $cab = $stCab->fetch();
 
-    $stmtOrden = $pdo->prepare($queryOrden);
-    $stmtOrden->bindParam(':orden_id', $orden_id, PDO::PARAM_INT);
-    $stmtOrden->execute();
-
-    $orden = $stmtOrden->fetch(PDO::FETCH_ASSOC);
-
-    if (!$orden) {
-        die("No se encontró la orden con el ID proporcionado.");
+    if (!$cab) {
+        die("No se encontró la orden de compra con el ID proporcionado.");
     }
 
-    // Agregar datos generales a la izquierda
+    // Encabezado
     $pdf->SetFont('Arial', '', 12);
-    $pdf->Cell(30, 8, 'Fecha:', 0, 0, 'L');
-    $pdf->Cell(50, 8, $orden['orden_fecha'], 0, 1, 'L');
-    $pdf->Cell(30, 8, 'Hora:', 0, 0, 'L');
-    $pdf->Cell(50, 8, $orden['orden_hora'], 0, 1, 'L');
-    $pdf->Cell(30, 8, 'Usuario:', 0, 0, 'L');
-    $pdf->Cell(50, 8, $orden['usuario'], 0, 1, 'L');
-    $pdf->Cell(30, 8, 'Nro Orden:', 0, 0, 'L');
-    $pdf->Cell(50, 8, $orden['orden_id'], 0, 1, 'L');
-    $pdf->Cell(30, 8, 'Estado:', 0, 0, 'L');
-    $pdf->Cell(50, 8, $orden['orden_estado'], 0, 1, 'L');
-    $pdf->Ln(10);
+    $pdf->Cell(40, 8, 'Usuario:', 0, 0, 'L');       $pdf->Cell(80, 8, $cab['usuario'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Fecha:', 0, 0, 'L');         $pdf->Cell(80, 8, $cab['fecha'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Hora:', 0, 0, 'L');          $pdf->Cell(80, 8, $cab['hora'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Sucursal:', 0, 0, 'L');      $pdf->Cell(80, 8, $cab['sucursal'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Proveedor:', 0, 0, 'L');     $pdf->Cell(80, 8, $cab['proveedor'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Orden Nro:', 0, 0, 'L');     $pdf->Cell(80, 8, $cab['id_orden_compra'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Estado:', 0, 0, 'L');        $pdf->Cell(80, 8, $cab['orden_estado'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Condicion:', 0, 0, 'L');     $pdf->Cell(80, 8, $cab['orden_condicion'], 0, 1, 'L');
+    $pdf->Cell(40, 8, 'Presupuesto Nro:', 0, 0, 'L');
+    $pdf->Cell(80, 8, $cab['id_presupuesto_compra'], 0, 1, 'L');
 
-    // Encabezados para el detalle
+    $pdf->Ln(8);
+
+    // ======= DETALLE =======
+    $sqlDet = "
+        SELECT 
+            d.id_materia_prima            AS codigo,
+            mp.materia_prima_descripcion   AS producto,
+            d.oc_cantidad_compra     AS cantidad,
+            d.oc_precio_compra       AS precio,
+            ti.iva_descri            AS iva    -- 'iva_10' | 'iva_5' | ...
+        FROM orden_detalle_compra d
+        JOIN materia_prima mp  ON mp.id_materia_prima = d.id_materia_prima
+        LEFT JOIN tipo_iva  ti ON ti.iva_id     = mp.iva_id
+        WHERE d.id_orden_compra = :id
+        ORDER BY mp.materia_prima_descripcion;
+    ";
+    $stDet = $pdo->prepare($sqlDet);
+    $stDet->execute([':id' => $orden_id]);
+
+    // Encabezados tabla
     $pdf->SetFont('Arial', 'B', 10);
     $pdf->SetFillColor(200, 220, 255);
-    $pdf->Cell(70, 8, 'Producto', 1, 0, 'C', true);
-    $pdf->Cell(20, 8, 'IVA', 1, 0, 'C', true);
-    $pdf->Cell(20, 8, 'Cantidad', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Precio Unitario', 1, 0, 'C', true);
-    $pdf->Cell(40, 8, 'Subtotal', 1, 1, 'C', true);
+    $wCod = 25; $wProd = 75; $wCant = 20; $wPrecio = 30; $wIva = 25; $wSubt = 35;
 
-    // Consultar datos del detalle de la orden
-    $queryDetalle = "
-        SELECT 
-            p.p_descrip AS producto,
-            ti.porcentaje_tipo_iva AS iva,
-            od.orden_cantidad,
-            od.orden_precio,
-            (od.orden_cantidad * od.orden_precio) AS subtotal
-        FROM 
-            orden_detalle_compras od
-        JOIN 
-            producto p ON od.cod_producto = p.cod_producto
-        JOIN
-            tipo_iva ti ON p.iva_id = ti.iva_id
-        WHERE 
-            od.orden_id = :orden_id
-    ";
+    $pdf->Cell($wCod, 8, 'Codigo',       1, 0, 'C', true);
+    $pdf->Cell($wProd, 8, 'Producto',    1, 0, 'C', true);
+    $pdf->Cell($wCant, 8, 'Cant.',       1, 0, 'C', true);
+    $pdf->Cell($wPrecio, 8, 'Precio',    1, 0, 'C', true);
+    $pdf->Cell($wSubt, 8, 'Subtotal',    1, 1, 'C', true);
 
-    $stmtDetalle = $pdo->prepare($queryDetalle);
-    $stmtDetalle->bindParam(':orden_id', $orden_id, PDO::PARAM_INT);
-    $stmtDetalle->execute();
-
-    // Agregar datos del detalle al PDF
     $pdf->SetFont('Arial', '', 10);
-    $totalGeneral = 0;
-    while ($detalle = $stmtDetalle->fetch(PDO::FETCH_ASSOC)) {
-        $pdf->Cell(70, 8, $detalle['producto'], 1, 0, 'C');
-        $pdf->Cell(20, 8, $detalle['iva'].'%', 1, 0, 'C');
-        $pdf->Cell(20, 8, $detalle['orden_cantidad'], 1, 0, 'C');
-        $pdf->Cell(40, 8, number_format($detalle['orden_precio'], 0, ',', '.'), 1, 0, 'C');
-        $pdf->Cell(40, 8, number_format($detalle['subtotal'], 0, ',', '.'), 1, 1, 'C');
-        
+
+    $totalImporte = 0;
+    $totalIva     = 0;
+
+    while ($d = $stDet->fetch()) {
+        $codigo  = (int) $d['codigo'];
+        $prod    = $d['producto'];
+        $cant    = (int) $d['cantidad'];
+        $precio  = (float) $d['precio'];
+        $ivaDesc = (string) $d['iva'];
+
+        $subtotal = $cant * $precio;
+
+        // IVA por fila (precio IVA incluido)
+        $ivaUnit = ivaUnitFromDescri($ivaDesc, $precio);
+        $ivaFila = $cant * $ivaUnit;
+
+        $totalImporte += $subtotal;
+        $totalIva     += $ivaFila;
+
+        $pdf->Cell($wCod, 8, (string)$codigo, 1, 0, 'C');
+        $pdf->Cell($wProd, 8, $prod,          1, 0, 'L');
+        $pdf->Cell($wCant, 8, number_format($cant, 0, ',', '.'), 1, 0, 'C');
+        $pdf->Cell($wPrecio, 8, gs($precio),  1, 0, 'R');
+        $pdf->Cell($wSubt, 8, gs($subtotal),  1, 1, 'R');
     }
 
-    // Total general
+    // ======= TOTALES =======
     $pdf->Ln(5);
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->Cell(140, 8, 'Total:', 0, 0, 'R');
-    $pdf->Cell(40, 8, $orden['orden_total'] .' Gs', 1, 1, 'C');
+    $pdf->SetFont('Arial', 'B', 11);
 
-    // Mostrar el PDF en el navegador
-    $pdf->Output('I', "Detalle_Orden_$orden_id.pdf");
+    $relleno = $wProd + $wCant;
+
+    // Total IVA
+    $pdf->Cell($relleno, 8, '', 0, 0);
+    $pdf->Cell($wIva, 8, 'Total IVA:', 1, 0, 'R');
+    $pdf->Cell($wSubt, 8, gs($totalIva), 1, 1, 'R');
+
+    // Total Importe (suma de subtotales)
+    $pdf->Cell($relleno, 8, '', 0, 0);
+    $pdf->Cell($wIva, 8, 'Total Importe:', 1, 0, 'R');
+    $pdf->Cell($wSubt, 8, gs($totalImporte), 1, 1, 'R');
+
+    // Total de cabecera
+    $pdf->SetFont('Arial', '', 10);
+    $pdf->Ln(3);
+    $pdf->Cell(0, 6,
+        'Total registrado en cabecera: ' . gs($cab['orden_total']),
+        0, 1, 'R'
+    );
+
+    // Salida
+    $pdf->Output('I', "OrdenCompra_{$orden_id}.pdf");
+
 } catch (PDOException $e) {
-    echo "Error en la conexión o consulta: " . $e->getMessage();
+    echo "Error en la conexión o consulta: " . htmlspecialchars($e->getMessage());
     exit;
 }
-?>

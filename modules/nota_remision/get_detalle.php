@@ -1,28 +1,36 @@
 <?php
 require "../../config/database.php";
 
-if (isset($_GET['remision_id'])) {
-    try {
-        $ped_id = $_GET['remision_id'];
+header('Content-Type: application/json; charset=utf-8');
 
-        $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
-        $pdo = new PDO($dsn, $user, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $query = $pdo->prepare("SELECT mp.mat_descripcion AS materia_prima, odc.remision_cantidad AS cantidad, ti.iva_porcen as iva
-                                FROM nota_remision_compra_detalle odc
-                                JOIN materias_primas mp ON odc.mat_id = mp.mat_id
-								JOIN tipo_iva ti ON ti.iva_id = mp.iva_id
-                                WHERE odc.remision_id = :ped_id");
-        $query->bindParam(':ped_id', $ped_id, PDO::PARAM_INT);
-        $query->execute();
-
-        $result = $query->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode($result);
-    } catch (PDOException $e) {
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+if (!isset($_GET['id_nota_remision'])) {
+  echo json_encode([]);
+  exit;
 }
-?>
 
+try {
+  $factId = (int)$_GET['id_nota_remision'];
 
+  $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
+  $pdo = new PDO($dsn, $user, $pass, [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+  ]);
+
+  $sql = "
+    SELECT
+      mp.materia_prima_descripcion AS producto,
+      nrc.nota_cantidad       AS cantidad
+    FROM nota_remision_detalle_compra nrc
+    JOIN materia_prima mp  ON mp.id_materia_prima  = nrc.id_materia_prima
+    WHERE nrc.id_nota_remision = :id_nota_remision
+    ORDER BY mp.materia_prima_descripcion
+  ";
+
+  $q = $pdo->prepare($sql);
+  $q->execute([':id_nota_remision' => $factId]);
+
+  echo json_encode($q->fetchAll(PDO::FETCH_ASSOC));
+
+} catch (Throwable $e) {
+  echo json_encode(['error' => $e->getMessage()]);
+}

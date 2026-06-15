@@ -1,9 +1,6 @@
 <?php
-// Iniciar la sesión
 session_start();
-
-// Verificar si la sesión es válida
-if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
+if (empty($_SESSION['username'])) {
     echo "<script>
             alert('Token de sesión inválido, serás redirigido al inicio de sesión');
             window.location.href = '../../login.html';
@@ -11,33 +8,30 @@ if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
     exit();
 }
 
-// Conexión a la base de datos
-include '../../config/database.php';
+$configPath = realpath("../../config/database.php");
+if (!$configPath || !file_exists($configPath)) {
+    die("Error: No se pudo encontrar el archivo de configuración.");
+}
+require_once $configPath;
 
-// Obtener el nombre de usuario de la sesión
+// Validar permisos de acceso
+require_once realpath("../../config/permissions.php");
+check_permission('REFERENCIALES');
+
 $username = $_SESSION['username'];
 
 try {
-    // Crear conexión con PostgreSQL usando PDO
     $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
-    $pdo = new PDO($dsn, $user, $pass);
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
-    // Configurar excepciones para errores
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Preparar consulta para obtener datos del usuario autenticado
     $query = $pdo->prepare("SELECT * FROM usuarios WHERE username = :username");
     $query->bindParam(':username', $username, PDO::PARAM_STR);
-
-    // Ejecutar consulta
     $query->execute();
-
-    // Obtener los datos del usuario autenticado
-    $auth_user = $query->fetch(PDO::FETCH_ASSOC);
-
-    // Verificar si se encontraron datos del usuario
+    $auth_user = $query->fetch();
     if (!$auth_user) {
-        // Si no se encuentra al usuario, destruir la sesión y redirigir al login
         session_destroy();
         echo "<script>
                 alert('Usuario no encontrado, serás redirigido al inicio de sesión');
@@ -45,488 +39,327 @@ try {
               </script>";
         exit();
     }
+    $permisoAcceso = (int)($auth_user['id_cargo'] ?? 0);
 } catch (PDOException $e) {
     die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
+
+// Configuración para el layout común
+$BASE_PATH = '../../';
+$page_title = 'Mantener Clientes';
+$extra_css = [
+    'vendor/datatables/dataTables.bootstrap4.min.css'
+];
+$extra_js_plugins = [
+    'vendor/datatables/jquery.dataTables.min.js',
+    'vendor/datatables/dataTables.bootstrap4.min.js'
+];
+
+// Variables para el sidebar (necesarias para header.php)
+$allowedCargos = [1,3,5];
+$showCoreSidebar = in_array($permisoAcceso, $allowedCargos, true);
+$showReportes = in_array($permisoAcceso, [3,5], true);
+$showAdministracion = ($permisoAcceso === 5);
+
+// Incluir header común
+include '../../header.php';
+
+$mostrarListado = !(isset($_GET['form_cliente']) && ($_GET['form'] === 'add' || $_GET['form'] === 'edit'));
 ?>
 
-
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <title>Gestión de Clientes</title>
-
-    <!-- Custom fonts for this template-->
-    <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-
-    <!-- Custom styles for this template-->
-    <link href="../../css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-
-    <link href="../../css/sb-admin-2.css" rel="stylesheet">
-
-    <link href="../../css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-
-</head>
-
-<body id="page-top">
-
-    <div id="toast-container"></div>
-
-    <!-- Page Wrapper -->
-    <div id="wrapper">
-
-       <!-- Sidebar -->
-<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-
-<!-- Sidebar - Brand -->
-<a class="sidebar-brand d-flex align-items-center justify-content-center" href="../../index.php">
-    <div class="sidebar-brand-icon rotate-n-15">
-        <i class="fas fa-laugh-wink"></i>
-    </div>
-    <div class="sidebar-brand-text mx-3">Debian service <sup></sup></div>
-    
-</a>
-
-<!-- Divider -->
-<hr class="sidebar-divider my-0">
-
-<!-- Nav Item - Dashboard -->
-<li class="nav-item active">
-    <a class="nav-link" href="../../index.php">
-        <i class="fas fa-fw fa-tachometer-alt"></i>
-        <span>Inicio</span></a>
-</li>
-
-<!-- Divider -->
-<hr class="sidebar-divider">
-
-<!-- Heading -->
-<div class="sidebar-heading">
-    Referenciales
-</div>
-
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-        aria-expanded="true" aria-controls="collapseTwo">
-        <i class="fas fa-fw fa-cog"></i>
-        <span>Compras</span>
-    </a>
-    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            
-            <a class="collapse-item" href="view.php">Ver / registrar</a>
-            <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-            <a class="collapse-item" href="../stock/view.php">Stock</a>
-            <a class="collapse-item" href="../proveedor/view.php">Proveedor</a>
+<!-- Contenido específico del módulo -->
+<?php if ($mostrarListado): ?>
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Mantener Clientes</h1>
+        <div>
+            <a href="?form_cliente=add&form=add" class="btn btn-primary btn-sm shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Nuevo Cliente
+            </a>
+            <button type="button" class="btn btn-warning btn-sm shadow-sm" data-toggle="modal" data-target="#modalReporte">
+                <i class="fas fa-print fa-sm text-white-50"></i> Imprimir Reporte
+            </button>
         </div>
     </div>
-</li>
 
-<!-- Nav Item - Utilities Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUtilities"
-        aria-expanded="true" aria-controls="collapseUtilities">
-        <i class="fas fa-fw fa-wrench"></i>
-        <span>Ventas</span>
-    </a>
-    <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities"
-        data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="../ventas/view.php">Registrar ventas</a>
-            <a class="collapse-item" href="../clientes/view.php">Cliente</a>
+    <?php
+    if (!empty($_GET['alert'])) {
+        $alertMap = [
+            1 => ['msg'=>'Cliente registrado correctamente.','class'=>'alert-success'],
+            2 => ['msg'=>'Cliente modificado correctamente.','class'=>'alert-success'],
+            3 => ['msg'=>'Cliente eliminado correctamente.','class'=>'alert-success'],
+            4 => ['msg'=>'No se pudo realizar la operación.','class'=>'alert-danger'],
+            5 => ['msg'=>'Ya existe un cliente con ese RUC/CI.','class'=>'alert-danger'],
+            6 => ['msg'=>'No se puede eliminar el cliente: tiene pedidos, ventas o cuentas por cobrar asociadas.','class'=>'alert-danger'],
+            7 => ['msg'=>'El cliente ha sido marcado como INACTIVO.','class'=>'alert-warning'],
+        ];
+        if (isset($alertMap[$_GET['alert']])) {
+            $data = $alertMap[$_GET['alert']];
+            echo "<div id='alert-message' class='alert {$data['class']} alert-dismissible fade show' role='alert'>
+                    {$data['msg']}
+                    <button type='button' class='close' data-dismiss='alert' aria-label='Close'>
+                      <span aria-hidden='true'>&times;</span>
+                    </button>
+                  </div>";
+        }
+    }
+    ?>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Clientes</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre/Razón Social</th>
+                            <th>Tipo</th>
+                            <th>RUC/CI</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        try {
+                            $sql = "
+                                SELECT 
+                                    c.id_cliente,
+                                    c.cliente_nombre || ' ' || COALESCE(c.cliente_apellido, '') AS nombre_completo,
+                                    c.cliente_nombre,
+                                    c.cliente_apellido,
+                                    COALESCE(c.tipo_cliente, 'PERSONA') AS tipo_cliente,
+                                    c.cliente_ruc,
+                                    COALESCE(c.cliente_ci, '') AS cliente_ci,
+                                    COALESCE(c.cliente_telefono, '') AS cliente_telefono,
+                                    COALESCE(c.cliente_email, '') AS cliente_email,
+                                    COALESCE(c.cliente_direccion, '') AS cliente_direccion,
+                                    c.cliente_estado
+                                FROM clientes c
+                                ORDER BY c.id_cliente DESC
+                            ";
+                            foreach ($pdo->query($sql) as $data) {
+                                $estadoClass = '';
+                                $estado = strtoupper(trim($data['cliente_estado']));
+                                if ($estado === 'ACTIVO') $estadoClass = 'badge-success';
+                                elseif ($estado === 'INACTIVO') $estadoClass = 'badge-warning';
+                                else $estadoClass = 'badge-danger';
+
+                                $rucCi = !empty($data['cliente_ci']) ? $data['cliente_ci'] : $data['cliente_ruc'];
+                                $tipoCliente = strtoupper($data['tipo_cliente'] ?? 'PERSONA');
+
+                                echo "<tr>";
+                                echo "<td>" . htmlspecialchars($data['id_cliente']) . "</td>";
+                                echo "<td>" . htmlspecialchars($data['nombre_completo']) . "</td>";
+                                echo "<td>" . htmlspecialchars($tipoCliente) . "</td>";
+                                echo "<td>" . htmlspecialchars($rucCi) . "</td>";
+                                echo "<td>" . htmlspecialchars($data['cliente_telefono']) . "</td>";
+                                echo "<td>" . htmlspecialchars($data['cliente_email']) . "</td>";
+                                echo "<td><span class='badge {$estadoClass}'>" . htmlspecialchars($estado) . "</span></td>";
+                                echo "<td>";
+                                echo "<a href='?form_cliente=edit&form=edit&id={$data['id_cliente']}' class='btn btn-warning btn-sm' title='Editar'>";
+                                echo "<i class='fas fa-edit'></i></a> ";
+                                echo "<button type='button' class='btn btn-info btn-sm btn-historial' data-id='{$data['id_cliente']}' data-nombre='" . htmlspecialchars($data['nombre_completo'], ENT_QUOTES) . "' title='Ver Historial'>";
+                                echo "<i class='fas fa-history'></i></button> ";
+                                echo "<button type='button' class='btn btn-danger btn-sm btn-eliminar' data-id='{$data['id_cliente']}' data-nombre='" . htmlspecialchars($data['nombre_completo'], ENT_QUOTES) . "' title='Eliminar/Inactivar'>";
+                                echo "<i class='fas fa-trash'></i></button>";
+                                echo "</td>";
+                                echo "</tr>";
+                            }
+                        } catch (PDOException $e) {
+                            echo "<tr><td colspan='8'>Error al consultar los datos: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</li>
 
-<!-- Divider -->
-<hr class="sidebar-divider">
-
-<!-- Heading -->
-<div class="sidebar-heading">
-    Centro de control
-</div>
-
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-<a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-    aria-expanded="true" aria-controls="collapsePages">
-    <i class="fas fa-fw fa-folder"></i>
-    <span>Servicios</span>
-</a>
-<div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-    <div class="bg-white py-2 collapse-inner rounded">
-        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
-        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
-        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-        <a class="collapse-item" href="../producto/view.php">Producto</a>
-        <a class="collapse-item" href="../tipo_producto/view.php">Tipo producto</a>
-        <div class="collapse-divider"></div>
-    </div>
-</div>
-</li>
-<!-- Nav Item - Pages Collapse Menu -->
-<li class="nav-item">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
-        aria-expanded="true" aria-controls="collapseAdm">
-        <i class="fas fa-fw fa-folder"></i>
-        <span>Administración</span>
-    </a>
-    <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="usuarios.html">Usuarios</a>
-            <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-        </div>
-    </div>
-</li>
-
-
-<!-- Divider -->
-<hr class="sidebar-divider d-none d-md-block">
-
-<!-- Sidebar Toggler (Sidebar) -->
-<div class="text-center d-none d-md-inline">
-    <button class="rounded-circle border-0" id="sidebarToggle"></button>
-</div>
-
-<!-- Sidebar Message >
-<div class="sidebar-card d-none d-lg-flex">
-    <img class="sidebar-card-illustration mb-2" src="img/undraw_rocket.svg" alt="...">
-    <p class="text-center mb-2"><strong>SB Admin Pro</strong> is packed with premium features, components, and more!</p>
-    <a class="btn btn-success btn-sm" href="https://startbootstrap.com/theme/sb-admin-pro">Upgrade to Pro!</a>
-</div-->
-
-</ul>
-<!-- End of Sidebar -->
-
-<!-- Content Wrapper -->
-<div id="content-wrapper" class="d-flex flex-column">
-
-<!-- Main Content -->
-<div id="content">
-
-    <!-- Topbar -->
-    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
-        <!-- Sidebar Toggle (Topbar) -->
-        <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-            <i class="fa fa-bars"></i>
-        </button>
-
-        <!-- Topbar Search >
-        <form
-            class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-            <div class="input-group">
-                <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..."
-                    aria-label="Search" aria-describedby="basic-addon2">
-                <div class="input-group-append">
-                    <button class="btn btn-primary" type="button">
-                        <i class="fas fa-search fa-sm"></i>
+    <!-- Modal de Eliminación -->
+    <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eliminarModalLabel">Confirmar Eliminación/Inactivación</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <div class="modal-body">
+                    <p>¿Está seguro de que desea eliminar el cliente <strong id="eliminarClienteNombre"></strong>?</p>
+                    <div id="eliminarInfo" class="alert alert-info">
+                        <small id="eliminarInfoText"></small>
+                    </div>
+                    <p class="text-danger"><strong>Nota:</strong> Si el cliente tiene pedidos, ventas o cuentas por cobrar asociadas, se marcará como INACTIVO en lugar de eliminarse.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmEliminarBtn">Eliminar/Inactivar</button>
+                </div>
             </div>
-        </form-->
-
-        <!-- Topbar Navbar -->
-        <ul class="navbar-nav ml-auto">
-
-            <!-- Nav Item - Search Dropdown (Visible Only XS)>
-            <li class="nav-item dropdown no-arrow d-sm-none">
-                <a class="nav-link dropdown-toggle" href="#" id="searchDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-search fa-fw"></i>
-                </a>
-                <!-- Dropdown - Messages>
-                <div class="dropdown-menu dropdown-menu-right p-3 shadow animated--grow-in"
-                    aria-labelledby="searchDropdown">
-                    <form class="form-inline mr-auto w-100 navbar-search">
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-light border-0 small"
-                                placeholder="Search for..." aria-label="Search"
-                                aria-describedby="basic-addon2">
-                            <div class="input-group-append">
-                                <button class="btn btn-primary" type="button">
-                                    <i class="fas fa-search fa-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </li>
-
-            <!-- Nav Item - Alerts>
-            <li class="nav-item dropdown no-arrow mx-1">
-                <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-bell fa-fw"></i>
-                    <!-- Counter - Alerts>
-                    <span class="badge badge-danger badge-counter">3+</span>
-                </a>
-                <!-- Dropdown - Alerts>
-                <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                    aria-labelledby="alertsDropdown">
-                    <h6 class="dropdown-header">
-                        Alerts Center
-                    </h6>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-primary">
-                                <i class="fas fa-file-alt text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 12, 2019</div>
-                            <span class="font-weight-bold">A new monthly report is ready to download!</span>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-success">
-                                <i class="fas fa-donate text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 7, 2019</div>
-                            $290.29 has been deposited into your account!
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-warning">
-                                <i class="fas fa-exclamation-triangle text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 2, 2019</div>
-                            Spending Alert: We've noticed unusually high spending for your account.
-                        </div>
-                    </a>
-                    <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
-                </div>
-            </li-->
-
-            <!-- Nav Item - Messages>
-            <li class="nav-item dropdown no-arrow mx-1">
-                <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-envelope fa-fw"></i>
-                    <!-- Counter - Messages>
-                    <span class="badge badge-danger badge-counter">7</span>
-                </a>
-                <!-- Dropdown - Messages>
-                <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                    aria-labelledby="messagesDropdown">
-                    <h6 class="dropdown-header">
-                        Message Center
-                    </h6>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_1.svg"
-                                alt="...">
-                            <div class="status-indicator bg-success"></div>
-                        </div>
-                        <div class="font-weight-bold">
-                            <div class="text-truncate">Hi there! I am wondering if you can help me with a
-                                problem I've been having.</div>
-                            <div class="small text-gray-500">Emily Fowler · 58m</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_2.svg"
-                                alt="...">
-                            <div class="status-indicator"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">I have the photos that you ordered last month, how
-                                would you like them sent to you?</div>
-                            <div class="small text-gray-500">Jae Chun · 1d</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_3.svg"
-                                alt="...">
-                            <div class="status-indicator bg-warning"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">Last month's report looks great, I am very happy with
-                                the progress so far, keep up the good work!</div>
-                            <div class="small text-gray-500">Morgan Alvarez · 2d</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="https://source.unsplash.com/Mv9hjnEUHR4/60x60"
-                                alt="...">
-                            <div class="status-indicator bg-success"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">Am I a good boy? The reason I ask is because someone
-                                told me that people say this to all dogs, even if they aren't good...</div>
-                            <div class="small text-gray-500">Chicken the Dog · 2w</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
-                </div>
-            </li-->
-
-            <div class="topbar-divider d-none d-sm-block"></div>
-
-            <!-- Nav Item - User Information -->
-            <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                        <?php echo htmlspecialchars($auth_user['name_user']); ?>
-                    </span>
-
-                    <img class="img-profile rounded-circle"
-                        src="../../img/undraw_profile.svg">
-                </a>
-                            <!-- Dropdown - User Information -->
-                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                                aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="../../modules/usuario/view.php">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Perfil
-                                </a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Cerrar sesión
-                                </a>
-                            </div>
-            </li>
-
-        </ul>
-
-    </nav>
-    <!-- End of Topbar -->
-
-                <!-- Begin Page Content -->
-                <div class="container-fluid">
-                    <!-- Page Heading -->
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Gestión de Clientes</h1>
-                        <a href="?form_clientes=add&form=add" class="btn btn-primary btn-sm shadow-sm">
-                            <i class="fas fa-plus fa-sm text-white-50"></i> Agregar Cliente
-                        </a>
-                        <?php 
-                            // Verifica si los parámetros están presentes y, de ser así, incluye el archivo form.php 
-                            if (isset($_GET['form_clientes']) && $_GET['form'] == 'add') { include "form.php"; } 
-                        ?>
-                    </div>
-
-                    <!-- Alert Messages -->
-                    <?php 
-                    if (!empty($_GET['alert'])) {
-                        if ($_GET['alert'] == 1) {
-                            echo "<div class='alert alert-success'>Datos registrados correctamente.</div>";
-                        } elseif ($_GET['alert'] == 2) {
-                            echo "<div class='alert alert-success'>Datos modificados correctamente.</div>";
-                        } elseif ($_GET['alert'] == 3) {
-                            echo "<div class='alert alert-success'>Datos eliminados correctamente.</div>";
-                        } elseif ($_GET['alert'] == 4) {
-                            echo "<div class='alert alert-danger'>No se pudo realizar la operación.</div>";
-                        }
-                    } //  c.cli_direccion, c.cli_telefono, c2.descrip_ciudad
-                    ?>
-
-                    <!-- DataTable -->
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Lista de Clientes</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>CI/RUC</th>
-                                            <th>Nombre</th>
-                                            <th>Apellido</th>
-                                            <th>Direccion</th>
-                                            <th>Telefono</th>
-                                            <th>Ciudad</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        include '../../config/database.php';
-                                        $query = mysqli_query($mysqli, "select c.id_cliente, c.ci_ruc, c.cli_nombre, c.cli_apellido, c.cli_direccion, c.cli_telefono, c2.descrip_ciudad
-                                        from clientes c 
-                                        join ciudad c2 on c.cod_ciudad = c2.cod_ciudad ;")
-                                            or die('Error: ' . mysqli_error($mysqli));
-
-                                        while ($data = mysqli_fetch_assoc($query)) {
-                                            echo "<tr>";
-                                            echo "<td>{$data['id_cliente']}</td>";
-                                            echo "<td>{$data['ci_ruc']}</td>";
-                                            echo "<td>{$data['cli_nombre']}</td>";
-                                            echo "<td>{$data['cli_apellido']}</td>";
-                                            echo "<td>{$data['cli_direccion']}</td>";
-                                            echo "<td>{$data['cli_telefono']}</td>";
-                                            echo "<td>{$data['descrip_ciudad']}</td>";
-                                            echo "<td> 
-                                                <a href='?form_clientes=edit&form=edit&id={$data['id_cliente']}' class='btn btn-warning btn-sm'>
-                                                    <i class='fas fa-edit'></i> Editar 
-                                                </a> 
-                                                <a href='proses.php?act=delete&id={$data['id_cliente']}' onclick='return confirm(\"¿Estás seguro/a de eliminar {$data['cli_nombre']}?\")' class='btn btn-danger btn-sm'>
-                                                    <i class='fas fa-trash'></i> Eliminar
-                                                </a>
-                                            </td>";
-                                            echo "</tr>";
-                                            if (isset($_GET['form_clientes']) && $_GET['form'] == 'edit') { include "form.php"; }
-                                        }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- /.container-fluid -->
-            </div>
-            <!-- End of Main Content -->
-
-            <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; Debian Dev's - Nicolas / Denis / César - 2024</span>
-                    </div>
-                </div>
-            </footer>
-            <!-- End of Footer -->
         </div>
-        <!-- End of Content Wrapper -->
     </div>
-    <!-- End of Page Wrapper -->
 
-    <!-- Scripts -->
-    <script src="../../vendor/jquery/jquery.min.js"></script>
-    <script src="../../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../js/sb-admin-2.min.js"></script>
-    <script src="../../vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#dataTable').DataTable();
+    <!-- Modal de Historial -->
+    <div class="modal fade" id="historialModal" tabindex="-1" role="dialog" aria-labelledby="historialModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="historialModalLabel">Historial de Cambios - <span id="historialClienteNombre"></span></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="historialContent">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="sr-only">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Reporte -->
+    <div class="modal fade" id="modalReporte" tabindex="-1" role="dialog" aria-labelledby="modalReporteLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalReporteLabel">Opciones de Reporte</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="reporte.php" method="GET" target="_blank">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="filtro_estado_reporte">Estado</label>
+                            <select name="estado" id="filtro_estado_reporte" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="ACTIVO">Activos</option>
+                                <option value="INACTIVO">Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtro_tipo_reporte">Tipo de Cliente</label>
+                            <select name="tipo_cliente" id="filtro_tipo_reporte" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="PERSONA">Persona</option>
+                                <option value="EMPRESA">Empresa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Generar Reporte</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<?php else: ?>
+    <?php include 'form.php'; ?>
+<?php endif; ?>
+
+<?php include '../../footer.php'; ?>
+
+<script>
+$(document).ready(function() {
+    $('#dataTable').DataTable({
+        "language": {
+            "url": "<?= $BASE_PATH ?>vendor/datatables/Spanish.json"
+        },
+        "order": [[0, "desc"]]
+    });
+
+    // Manejar clic en botón de eliminar
+    $('#dataTable').on('click', '.btn-eliminar', function() {
+        var clienteId = $(this).data('id');
+        var nombre = $(this).data('nombre');
+        
+        $('#eliminarClienteNombre').text(nombre);
+        $('#eliminarInfoText').text('Se verificará si el cliente tiene pedidos, ventas o cuentas por cobrar asociadas.');
+        
+        $('#eliminarModal').modal('show');
+
+        $('#confirmEliminarBtn').off('click').on('click', function() {
+            $.ajax({
+                url: 'proses.php?act=delete',
+                type: 'POST',
+                data: { id: clienteId },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + (response.message || 'No se pudo eliminar el cliente'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Error de comunicación: ' + error);
+                }
+            });
         });
-    </script>
-</body>
+    });
 
-</html>
+    // Manejar clic en botón de historial
+    $('#dataTable').on('click', '.btn-historial', function() {
+        var clienteId = $(this).data('id');
+        var nombre = $(this).data('nombre');
+        
+        $('#historialClienteNombre').text(nombre);
+        $('#historialContent').html('<div class="text-center"><div class="spinner-border" role="status"><span class="sr-only">Cargando...</span></div></div>');
+        $('#historialModal').modal('show');
+
+        $.ajax({
+            url: 'get_historial.php',
+            type: 'GET',
+            data: { cliente_id: clienteId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    var html = '<table class="table table-bordered table-sm">';
+                    html += '<thead><tr><th>Fecha</th><th>Campo</th><th>Valor Anterior</th><th>Valor Nuevo</th><th>Acción</th><th>Usuario</th></tr></thead><tbody>';
+                    
+                    if (response.historial && response.historial.length > 0) {
+                        response.historial.forEach(function(item) {
+                            html += '<tr>';
+                            html += '<td>' + item.fecha_modificacion + '</td>';
+                            html += '<td>' + item.campo_modificado + '</td>';
+                            html += '<td>' + (item.valor_anterior || '-') + '</td>';
+                            html += '<td>' + (item.valor_nuevo || '-') + '</td>';
+                            html += '<td><span class="badge badge-info">' + item.accion + '</span></td>';
+                            html += '<td>' + item.username + '</td>';
+                            html += '</tr>';
+                        });
+                    } else {
+                        html += '<tr><td colspan="6" class="text-center text-muted">No hay historial disponible</td></tr>';
+                    }
+                    
+                    html += '</tbody></table>';
+                    $('#historialContent').html(html);
+                } else {
+                    $('#historialContent').html('<div class="alert alert-warning">' + (response.message || 'No se pudo cargar el historial') + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#historialContent').html('<div class="alert alert-danger">Error al cargar el historial: ' + error + '</div>');
+            }
+        });
+    });
+});
+</script>
+

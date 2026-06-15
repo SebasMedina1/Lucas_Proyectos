@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->rowCount() === 1) {
             echo "Correo encontrado.<br>";
             $token = bin2hex(random_bytes(50));
-            $expires = date("U") + 1800;
+            $expires = date("U") + 1800; // 1800 segundos = 30 minutos
 
             $stmt = $pdo->prepare("INSERT INTO password_reset (email, token, expires) VALUES (:email, :token, :expires)");
             $stmt->bindParam(':email', $email);
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
 
-                $mail->setFrom('nicolasdominguez180804@gmail.com', 'DebianDEV');
+                $mail->setFrom('nicolasdominguez180804@gmail.com', 'Nico Store');
                 $mail->addAddress($email);
                 $mail->isHTML(true);
                 $mail->Subject = 'Restablecer tu contraseña';

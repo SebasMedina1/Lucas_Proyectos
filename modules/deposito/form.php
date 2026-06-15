@@ -24,7 +24,7 @@ if (isset($_GET['form_deposito']) && $_GET['form'] == 'add') { ?>
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                         // Generar el código automáticamente
-                        $query = $pdo->query("SELECT MAX(cod_deposito) AS id FROM deposito");
+                        $query = $pdo->query("SELECT MAX(deposito_id) AS id FROM deposito");
                         $data = $query->fetch(PDO::FETCH_ASSOC);
                         $codigo = ($data['id'] !== null) ? $data['id'] + 1 : 1;
                     } catch (PDOException $e) {
@@ -57,7 +57,7 @@ if (isset($_GET['form_deposito']) && $_GET['form'] == 'add') { ?>
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             // Consultar los datos del depósito
-            $query = $pdo->prepare("SELECT cod_deposito, descrip FROM deposito WHERE cod_deposito = :id");
+            $query = $pdo->prepare("SELECT deposito_id, deposito_descri FROM deposito WHERE deposito_id = :id");
             $query->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
             $query->execute();
             $data = $query->fetch(PDO::FETCH_ASSOC);
@@ -82,12 +82,12 @@ if (isset($_GET['form_deposito']) && $_GET['form'] == 'add') { ?>
                 <form action="proses.php?act=update" method="POST">
                     <div class="form-group">
                         <label for="codigo">Código</label>
-                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo htmlspecialchars($data['cod_deposito']); ?>" readonly>
+                        <input type="text" class="form-control" id="codigo" name="codigo" value="<?php echo htmlspecialchars($data['deposito_id']); ?>" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="descrip">Descripción</label>
-                        <input type="text" class="form-control" id="descrip" name="descrip" value="<?php echo htmlspecialchars($data['descrip']); ?>" required>
+                        <input type="text" class="form-control" id="descrip" name="descrip" value="<?php echo htmlspecialchars($data['deposito_descri']); ?>" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" name="Guardar">Guardar</button>

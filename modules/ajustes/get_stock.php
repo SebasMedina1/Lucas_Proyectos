@@ -2,8 +2,8 @@
 require "../../config/database.php";
 
 // Obtener los parámetros de la URL
-$productoId = isset($_GET['cod_producto']) ? $_GET['cod_producto'] : null;
-$depositoId = isset($_GET['cod_deposito']) ? $_GET['cod_deposito'] : null;
+$productoId = isset($_GET['producto_id']) ? (int)$_GET['producto_id'] : null;
+$depositoId = isset($_GET['deposito_id']) ? (int)$_GET['deposito_id'] : null;
 
 if (!$productoId || !$depositoId) {
     echo json_encode(['error' => 'Faltan parámetros']);
@@ -18,12 +18,12 @@ try {
 
     // Consulta para obtener el stock existencia
     $query = $pdo->prepare(
-        "SELECT COALESCE(stock_existencia, 0) AS stock_existencia
-        FROM stock
-        WHERE cod_producto = :cod_producto AND cod_deposito = :cod_deposito"
+        "SELECT COALESCE(cantidad_existente, 0) AS stock_existencia
+        FROM stock_materia_prima
+        WHERE id_materia_prima = :materia_prima AND deposito_id = :deposito"
     );
-    $query->bindParam(':cod_producto', $productoId, PDO::PARAM_INT);
-    $query->bindParam(':cod_deposito', $depositoId, PDO::PARAM_INT);
+    $query->bindParam(':materia_prima', $productoId, PDO::PARAM_INT);
+    $query->bindParam(':deposito', $depositoId, PDO::PARAM_INT);
     $query->execute();
 
     $result = $query->fetch(PDO::FETCH_ASSOC);

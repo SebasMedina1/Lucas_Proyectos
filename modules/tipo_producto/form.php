@@ -1,6 +1,21 @@
 <?php 
 // Verificar si existe el parámetro 'form' en la URL
-if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { ?>
+if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { 
+    require "../../config/database.php";
+    
+    try {
+        $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
+        $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Generar el código automáticamente
+        $query = $pdo->query("SELECT MAX(cod_tipo_prod) as id FROM tipo_producto");
+        $data_id = $query->fetch(PDO::FETCH_ASSOC);
+        $codigo = ($data_id['id'] !== null) ? $data_id['id'] + 1 : 1;
+    } catch (PDOException $e) {
+        $codigo = 1;
+    }
+    ?>
     <div class="container-fluid">
         <!-- Encabezado de página -->
         <h1 class="h3 mb-4 text-gray-800">
@@ -15,26 +30,14 @@ if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { ?>
         <div class="card shadow mb-4">
             <div class="card-body">
                 <form action="proses.php?act=insert" method="POST">
-                    <?php
-                    require "../../config/database.php";
-                    // Generar el código automáticamente
-                    $query_id = mysqli_query($mysqli, "SELECT MAX(cod_tipo_prod) as id FROM tipo_producto") or die('Error ' . mysqli_error($mysqli));
-                    $count = mysqli_num_rows($query_id);  
-                    if ($count <> 0) {
-                        $data_id = mysqli_fetch_assoc($query_id);
-                        $codigo = $data_id['id'] + 1;
-                    } else {
-                        $codigo = 1;
-                    }
-                    ?>
                     <div class="form-group">
                         <label for="cod_tipo_prod">Código</label>
-                        <input type="text" class="form-control" id="cod_tipo_prod" name="cod_tipo_prod" value="<?php echo $codigo; ?>" readonly>
+                        <input type="text" class="form-control" id="cod_tipo_prod" name="cod_tipo_prod" value="<?php echo htmlspecialchars($codigo); ?>" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="t_p_descrip">Descripción del Tipo de Producto</label>
-                        <input type="text" class="form-control" id="t_p_descrip" name="t_p_descrip" placeholder="Ingrese descripcion del tipo de producto " required>
+                        <input type="text" class="form-control" id="t_p_descrip" name="t_p_descrip" placeholder="Ingrese descripcion del tipo de producto" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" name="Guardar">Guardar</button>
@@ -46,9 +49,30 @@ if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { ?>
 <?php
 } elseif (isset($_GET['form_tproducto']) && $_GET['form'] == 'edit') { 
     if (isset($_GET['id'])) {
-        // Consultar los datos de la ciudad
-        $query = mysqli_query($mysqli, "SELECT * FROM tipo_producto where cod_tipo_prod = '$_GET[id]'") or die('Error: ' . mysqli_error($mysqli));
-        $data = mysqli_fetch_assoc($query);
+        require "../../config/database.php";
+        
+        try {
+            $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
+            $pdo = new PDO($dsn, $user, $pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Consultar los datos del tipo de producto
+            $query = $pdo->prepare("SELECT * FROM tipo_producto WHERE cod_tipo_prod = :id");
+            $query->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
+            $query->execute();
+            $data = $query->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$data) {
+                header('Location: view.php');
+                exit();
+            }
+        } catch (PDOException $e) {
+            header('Location: view.php');
+            exit();
+        }
+    } else {
+        header('Location: view.php');
+        exit();
     }
     ?>
     <div class="container-fluid">
@@ -67,12 +91,12 @@ if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { ?>
                 <form action="proses.php?act=update" method="POST">
                     <div class="form-group">
                         <label for="cod_tipo_prod">Código</label>
-                        <input type="text" class="form-control" id="cod_tipo_prod" name="cod_tipo_prod" value="<?php echo $data['cod_tipo_prod']; ?>" readonly>
+                        <input type="text" class="form-control" id="cod_tipo_prod" name="cod_tipo_prod" value="<?php echo htmlspecialchars($data['cod_tipo_prod']); ?>" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="t_p_descrip">Descripción</label>
-                        <input type="text" class="form-control" id="t_p_descrip" name="t_p_descrip" value="<?php echo $data['t_p_descrip']; ?>" required>
+                        <input type="text" class="form-control" id="t_p_descrip" name="t_p_descrip" value="<?php echo htmlspecialchars($data['t_p_descrip']); ?>" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" name="Guardar">Guardar</button>
@@ -83,7 +107,8 @@ if (isset($_GET['form_tproducto']) && $_GET['form'] == 'add') { ?>
     </div>
 <?php 
 } else { 
-    // Si no existe 'form' en la URL o el valor no es válido, redirigir a la lista de ciudades
+    // Si no existe 'form' en la URL o el valor no es válido, redirigir a la lista
     header('Location: view.php');
+    exit();
 }
 ?>

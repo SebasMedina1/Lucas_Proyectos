@@ -1,9 +1,7 @@
 <?php
-// Iniciar la sesión
 session_start();
 
-// Verificar si la sesión es válida
-if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
+if (empty($_SESSION['username'])) {
     echo "<script>
             alert('Token de sesión inválido, serás redirigido al inicio de sesión');
             window.location.href = '../../login.html';
@@ -11,306 +9,193 @@ if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
     exit();
 }
 
-// Conexión a la base de datos
 $file = realpath("../../config/database.php");
-
 if (!$file || !file_exists($file)) {
     die("Error: No se pudo encontrar el archivo en la ruta $file");
 }
 
 require_once $file;
 
-// Obtener el nombre de usuario de la sesión
-$username = $_SESSION['username'];
+// Incluir sistema de permisos y verificar acceso
+require_once realpath("../../config/permissions.php");
+check_permission('ADMINISTRACION'); // Solo ADMIN puede gestionar usuarios
+
+$alertCode = $_GET['alert'] ?? '';
+$alertMessage = '';
+$alertClass = 'success';
+switch ($alertCode) {
+    case '1':
+        $alertMessage = 'Usuario registrado correctamente.';
+        break;
+    case '2':
+        $alertMessage = 'Usuario actualizado correctamente.';
+        break;
+    case '3':
+        $alertMessage = 'Estado del usuario actualizado.';
+        break;
+    case '4':
+        $alertClass = 'danger';
+        // Si hay un mensaje personalizado en la URL, usarlo; sino mostrar el genérico
+        $alertMessage = !empty($_GET['msg']) ? htmlspecialchars(urldecode($_GET['msg'])) : 'Ocurrió un error al procesar la solicitud.';
+        break;
+}
+
+// Si hay un mensaje en la URL y aún no se estableció, usarlo
+if (empty($alertMessage) && !empty($_GET['msg'])) {
+    $alertClass = 'danger';
+    $alertMessage = htmlspecialchars(urldecode($_GET['msg']));
+}
 
 try {
-    // Crear conexión con PostgreSQL usando PDO
     $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
 
-    // Preparar consulta para obtener datos del usuario y del personal relacionado
-    $query = $pdo->prepare("
-        SELECT u.*, p.personal_nombre, p.personal_apellido, p.personal_telefono, p.personal_ci, p.personal_direccion 
+    // Ya validado por check_permission arriba
+
+    $stmt = $pdo->query("
+        SELECT 
+            u.id_usuario,
+            u.username,
+            COALESCE(p.personal_nombre, '') AS usu_nombre,
+            COALESCE(p.personal_apellido, '') AS usu_apellido,
+            COALESCE(p.personal_ci, '') AS usuario_ci,
+            COALESCE(p.personal_telefono, '') AS usuario_telefono,
+            COALESCE(u.estado_usuario, 'ACTIVO') AS estado_usuario,
+            COALESCE(s.descripcion_sucursal, '-') AS sucursal,
+            COALESCE(m.modulo_descri, '-') AS modulo,
+            COALESCE(c.cargo_descripcion, '-') AS cargo,
+            u.id_personal
         FROM usuarios u
-        INNER JOIN personal p ON u.personal_id = p.personal_id
-        WHERE u.username = :username
+        LEFT JOIN sucursales s ON s.id_sucursal = u.id_sucursal
+        LEFT JOIN modulos m ON m.modulo_id = u.modulo_id
+        LEFT JOIN personal p ON p.id_personal = u.id_personal
+        LEFT JOIN cargos c ON c.id_cargo = COALESCE(u.id_cargo, p.id_cargo, 0)
+        ORDER BY u.id_usuario ASC
     ");
-    $query->bindParam(':username', $username, PDO::PARAM_STR);
-
-    // Ejecutar consulta
-    $query->execute();
-
-    // Obtener los datos del usuario autenticado junto con los datos del personal
-    $auth_user = $query->fetch(PDO::FETCH_ASSOC);
-
-    // Verificar si se encontraron datos del usuario
-    if (!$auth_user) {
-        // Si no se encuentra al usuario, destruir la sesión y redirigir al login
-        session_destroy();
-        echo "<script>
-                alert('Usuario no encontrado, serás redirigido al inicio de sesión');
-                window.location.href = '../../login.html';
-              </script>";
-        exit();
-    }
+    $usuarios = $stmt->fetchAll();
 } catch (PDOException $e) {
     die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
 
+// Configuración para el layout común
+$BASE_PATH = '../../';
+$page_title = 'Mantenimiento de Usuarios';
+$extra_css = [
+    'vendor/datatables/dataTables.bootstrap4.min.css'
+];
+$extra_js_plugins = [
+    'vendor/datatables/jquery.dataTables.min.js',
+    'vendor/datatables/dataTables.bootstrap4.min.js'
+];
+
+// El header.php ya maneja los permisos automáticamente
+
+// Incluir header común
+include '../../header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Perfil de Usuario">
-    <meta name="author" content="">
-
-    <title>Perfil de Usuario</title>
-
-    <!-- Estilos -->
-    <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="../../css/sb-admin-2.min.css" rel="stylesheet">
-</head>
-
-<body id="page-top">
-
-    <!-- Page Wrapper -->
-    <div id="wrapper">
-
-        <!-- Sidebar -->
-        <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-
-            <!-- Sidebar - Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="../../index.php">
-                <div class="sidebar-brand-icon rotate-n-15">
-                    <i class="fas fa-laugh-wink"></i>
-                </div>
-                <div class="sidebar-brand-text mx-3">web</div>
-            </a>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider my-0">
-
-            <!-- Nav Item - Inicio -->
-            <li class="nav-item active">
-                <a class="nav-link" href="../../index.php">
-                    <i class="fas fa-fw fa-tachometer-alt"></i>
-                    <span>Inicio</span>
-                </a>
-            </li>
-
-            <!-- Nav Item - Manual de Usuario -->
-            <li class="nav-item active">
-                <a class="nav-link" href="./manual.pdf" target="_blank">
-                    <i class="fas fa-fw fa-book"></i>
-                    <span>Manual de Usuario</span>
-                </a>
-            </li>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-            <!-- Heading -->
-            <div class="sidebar-heading">
-                Referenciales
-            </div>
-
-            <!-- Nav Item - Compras -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseCompras"
-                    aria-expanded="true" aria-controls="collapseCompras">
-                    <i class="fas fa-fw fa-cog"></i>
-                    <span>Compras</span>
-                </a>
-                <div id="collapseCompras" class="collapse" aria-labelledby="headingCompras" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
-                        <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
-                        <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
-                        <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>
-                    </div>
-                </div>
-            </li>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-            <!-- Heading -->
-            <div class="sidebar-heading">
-                Movimientos
-            </div>
-
-            <!-- Nav Item - Referenciales -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReferenciales"
-                    aria-expanded="true" aria-controls="collapseReferenciales">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Referenciales</span>
-                </a>
-                <div id="collapseReferenciales" class="collapse" aria-labelledby="headingReferenciales" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <!-- Categoría: Ajustes -->
-                        <h6 class="collapse-header">Ajustes:</h6>
-                        <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
-                        <a class="collapse-item" href="../stock/view.php">Stock</a>
-                        <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
-                        <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
-
-                        <!-- Divisor -->
-                        <div class="collapse-divider"></div>
-
-                        <!-- Categoría: Productos -->
-                        <h6 class="collapse-header">Gestión de Productos:</h6>
-                        <a class="collapse-item" href="../producto/view.php">Producto</a>
-                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-
-                        <!-- Divisor -->
-                        <div class="collapse-divider"></div>
-
-                        <!-- Categoría: Proveedores y Depósitos -->
-                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
-                        <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
-                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-                    </div>
-                </div>
-            </li>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-            <!-- Nav Item - Administración -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdministracion"
-                    aria-expanded="true" aria-controls="collapseAdministracion">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Administración</span>
-                </a>
-                <div id="collapseAdministracion" class="collapse" aria-labelledby="headingAdministracion" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
-                        <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-                    </div>
-                </div>
-            </li>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-        </ul>
-        <!-- End of Sidebar -->
-
-        <!-- Fin del Sidebar -->
-
-        <!-- Content Wrapper -->
-        <div id="content-wrapper" class="d-flex flex-column">
-            <!-- Main Content -->
-            <div id="content">
-
-                <!-- Topbar -->
-                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-                    <ul class="navbar-nav ml-auto">
-                        <!-- Dropdown de Usuario -->
-                        <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                                    <?php echo htmlspecialchars($auth_user['username']); ?>
-                                </span>
-                                <img class="img-profile rounded-circle" src="../../img/undraw_profile.svg">
-                            </a>
-                            <!-- Dropdown - User Information -->
-                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="../usuario/view.php">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Perfil
-                                </a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Cerrar sesión
-                                </a>
-                            </div>
-                        </li>
-                    </ul>
-                </nav>
-                <!-- Fin del Topbar -->
-
-                <!-- Contenido Principal -->
-                <div class="container-fluid">
-                    <!-- Título de Página -->
-                    <h1 class="h3 mb-4 text-gray-800">Perfil de Usuario</h1>
-
-                    <!-- Información del Usuario -->
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Información Personal</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-3 text-center">
-                                    <img class="img-profile rounded-circle" src="../../img/undraw_profile.svg" width="100%">
-                                </div>
-                                <div class="col-md-9">
-                                <h4><?php echo htmlspecialchars(strtoupper($auth_user['personal_nombre'] . ' ' . $auth_user['personal_apellido'])); ?></h4>
-                                    <p><strong>Nombre de usuario:</strong> <?php echo htmlspecialchars($auth_user['username']); ?></p>
-                                    <p><strong>Email:</strong> <?php echo htmlspecialchars($auth_user['email']); ?></p>
-                                    <p><strong>Teléfono:</strong> <?php echo htmlspecialchars($auth_user['personal_telefono']); ?></p>
-                                    <p><strong>Cédula de Identidad:</strong> <?php echo htmlspecialchars($auth_user['personal_ci']); ?></p>
-                                    <p><strong>Dirección:</strong> <?php echo htmlspecialchars($auth_user['personal_direccion']); ?></p>
-                                    <p><strong>Permisos de Acceso:</strong> <?php echo htmlspecialchars($auth_user['permisos_acceso']); ?></p>
-                                    <p><strong>Estado:</strong> <?php echo htmlspecialchars($auth_user['estado']); ?></p>
-                                    
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fin del Contenido Principal -->
-            </div>
-            <!-- Fin del Main Content -->
-
-            <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; web - Nicolas Dominguez - 2025</span>
-                    </div>
-                </div>
-            </footer>
-        </div>
-        <!-- Fin del Content Wrapper -->
+<!-- Contenido específico del módulo -->
+<div class="container-fluid py-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Mantenimiento de Usuarios</h1>
+        <a href="form.php?action=add" class="btn btn-primary btn-sm">
+            <i class="fas fa-user-plus"></i> Nuevo Usuario
+        </a>
     </div>
-    <!-- Fin del Page Wrapper -->
 
-    <!-- Modal para Cerrar Sesión -->
-    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
-                    <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
-                </div>
+    <?php if ($alertMessage): ?>
+        <div id="alert-message" class="alert alert-<?php echo $alertClass; ?> alert-dismissible fade show" role="alert">
+            <?php echo htmlspecialchars($alertMessage); ?>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    <?php endif; ?>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Usuarios registrados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Usuario</th>
+                            <th>Cédula</th>
+                            <th>Módulo</th>
+                            <th>Sucursal</th>
+                            <th>Cargo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($usuarios as $usuario): ?>
+                            <tr>
+                                <td><?php echo (int)$usuario['id_usuario']; ?></td>
+                                <td><?php echo htmlspecialchars($usuario['usu_nombre']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['usu_apellido']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['username']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['usuario_ci']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['modulo']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['sucursal']); ?></td>
+                                <td><?php echo htmlspecialchars($usuario['cargo']); ?></td>
+                                <td>
+                                    <span class="badge badge-<?php echo $usuario['estado_usuario'] === 'ACTIVO' ? 'success' : 'secondary'; ?>">
+                                        <?php echo htmlspecialchars($usuario['estado_usuario']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="form.php?action=edit&id=<?php echo (int)$usuario['id_usuario']; ?>" class="btn btn-info btn-sm mb-1">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form class="d-inline confirm-toggle" action="proses.php?act=toggle" method="POST">
+                                        <input type="hidden" name="id_usuario" value="<?php echo (int)$usuario['id_usuario']; ?>">
+                                        <input type="hidden" name="estado" value="<?php echo $usuario['estado_usuario'] === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'; ?>">
+                                        <button type="submit" class="btn btn-<?php echo $usuario['estado_usuario'] === 'ACTIVO' ? 'warning' : 'success'; ?> btn-sm">
+                                            <?php echo $usuario['estado_usuario'] === 'ACTIVO' ? 'Inactivar' : 'Activar'; ?>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Scripts -->
-    <script src="../../vendor/jquery/jquery.min.js"></script>
-    <script src="../../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../js/sb-admin-2.min.js"></script>
-</body>
+<?php
+$inline_js = "
+setTimeout(function() {
+    var alertMessage = document.getElementById('alert-message');
+    if (alertMessage) {
+        alertMessage.style.display = 'none';
+    }
+}, 3000);
 
-</html>
+$('#dataTable').DataTable({
+    language: {
+        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+    }
+});
+
+document.querySelectorAll('.confirm-toggle').forEach(form => {
+    form.addEventListener('submit', (event) => {
+        const shouldSubmit = confirm('¿Confirma cambiar el estado del usuario?');
+        if (!shouldSubmit) {
+            event.preventDefault();
+        }
+    });
+});
+";
+include '../../footer.php';
+?>

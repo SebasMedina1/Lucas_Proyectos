@@ -10,12 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo = new PDO($dsn, $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Marcar el pedido como "ANULADO"
-        $query = $pdo->prepare("UPDATE pedidos_compras SET estado = 'ANULADO' WHERE pedido_id = :pedidoId");
-        $query->bindParam(':pedidoId', $pedidoId, PDO::PARAM_INT);
+        // Marcar el presupuesto como "ANULADO"
+        $query = $pdo->prepare("UPDATE presupuesto_compra SET presu_estado = 'ANULADO' WHERE id_presupuesto_compra = :presupuestoId");
+        $query->bindParam(':presupuestoId', $pedidoId, PDO::PARAM_INT);
         $query->execute();
 
-        echo json_encode(['success' => true, 'message' => 'Pedido anulado exitosamente.']);
+        echo json_encode(['success' => true, 'message' => 'Presupuesto anulado exitosamente.']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Error al anular el pedido: ' . $e->getMessage()]);
     }

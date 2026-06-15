@@ -3,7 +3,7 @@
 session_start();
 
 // Verificar si la sesión es válida
-if (empty($_SESSION['username']) || empty($_SESSION['password'])) {
+if (empty($_SESSION['username'])) {
     echo "<script>
             alert('Token de sesión inválido, serás redirigido al inicio de sesión');
             window.location.href = '../../login.html';
@@ -27,20 +27,21 @@ try {
     // Crear conexión con PostgreSQL usando PDO
     $dsn = "pgsql:host=$host;port=$port;dbname=$database;";
     $pdo = new PDO($dsn, $user, $pass);
-
+    
     // Configurar excepciones para errores
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
+    
     // Preparar consulta para obtener datos del usuario autenticado
     $query = $pdo->prepare("SELECT * FROM usuarios WHERE username = :username");
     $query->bindParam(':username', $username, PDO::PARAM_STR);
-
+    
     // Ejecutar consulta
     $query->execute();
-
+    
     // Obtener los datos del usuario autenticado
     $auth_user = $query->fetch(PDO::FETCH_ASSOC);
-
+    $permisoAcceso = $auth_user['id_cargo'] ?? 0;
+    
     // Verificar si se encontraron datos del usuario
     if (!$auth_user) {
         // Si no se encuentra al usuario, destruir la sesión y redirigir al login
@@ -54,393 +55,36 @@ try {
 } catch (PDOException $e) {
     die("Error en la conexión a la base de datos: " . $e->getMessage());
 }
+
+// Configuración para el layout común
+$BASE_PATH = '../../';
+$page_title = 'Gestión de Stock';
+$extra_css = [
+    'vendor/datatables/dataTables.bootstrap4.min.css'
+];
+$extra_js_plugins = [
+    'vendor/datatables/jquery.dataTables.min.js',
+    'vendor/datatables/dataTables.bootstrap4.min.js'
+];
+
+// Variables para el sidebar (necesarias para header.php)
+$allowedCargos = [1,3,5];
+$showCoreSidebar = in_array($permisoAcceso, $allowedCargos, true);
+$showReportes = in_array($permisoAcceso, [3,5], true);
+$showAdministracion = ($permisoAcceso === 5);
+
+// Incluir header común
+include '../../header.php';
+
+// Obtener filtros
+$filtro_deposito = $_GET['filtro_deposito'] ?? '';
+$filtro_producto = $_GET['filtro_producto'] ?? '';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <title>Gestión de Stock</title>
-
-    <!-- Custom fonts for this template-->
-    <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-
-    <!-- Custom styles for this template-->
-    <link href="../../css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
-
-    <link href="../../css/sb-admin-2.css" rel="stylesheet">
-
-    <link href="../../css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="../../vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-
-</head>
-
-<body id="page-top">
-
-    <div id="toast-container"></div>
-
-    <!-- Page Wrapper -->
-    <div id="wrapper">
-
-       <!-- Sidebar -->
-<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-
-<!-- Sidebar - Brand -->
-<a class="sidebar-brand d-flex align-items-center justify-content-center" href="../../index.php">
-    <div class="sidebar-brand-icon rotate-n-15">
-        <i class="fas fa-laugh-wink"></i>
-    </div>
-    <div class="sidebar-brand-text mx-3">web<sup></sup></div>
-    
-</a>
-
-<!-- Divider -->
-<hr class="sidebar-divider my-0">
-
-            <!-- Nav Item - Dashboard -->
-            <li class="nav-item active">
-                <a class="nav-link" href="../../index.php">
-                    <i class="fas fa-fw fa-tachometer-alt"></i>
-                    <span>Inicio</span></a>
-            </li>
-            <li class="nav-item active">
-    <a class="nav-link" href="./manual.pdf" target="_blank">
-        <i class="fas fa-fw fa-tachometer-alt"></i>
-        <span>Manual de Usuario</span>
-    </a>
-</li>
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-            <!-- Heading -->
-            <div class="sidebar-heading">
-                Referenciales
-            </div>
-
-            <!-- Nav Item - Pages Collapse Menu -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-                    aria-expanded="true" aria-controls="collapseTwo">
-                    <i class="fas fa-fw fa-cog"></i>
-                    <span>Compras</span>
-                </a>
-                <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                    <a class="collapse-item" href="../pedido_compra/view.php">Pedidos de compras</a>
-                    <a class="collapse-item" href="../presupuesto/view.php">Presupuesto</a>
-                    <a class="collapse-item" href="../orden_compra/view.php">Orden de compra</a>
-                    <a class="collapse-item" href="../gestionar_compras/view.php">Gestionar Compras</a>  
-
-
-                    </div>
-                </div>
-            </li>
-
-
-            <!-- Divider -->
-            <hr class="sidebar-divider">
-
-            <!-- Heading -->
-            <div class="sidebar-heading">
-                Movimientos
-            </div>
-
-            <!-- Nav Item - Pages Collapse Menu -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-                    aria-expanded="true" aria-controls="collapsePages">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Referenciales</span>
-                </a>
-                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-
-                        <!-- Categoría: Ajustes -->
-                        <h6 class="collapse-header">Ajustes:</h6>
-                        <a class="collapse-item" href="../ajustes/view.php">Ajuste de Inventario</a>
-                        <a class="collapse-item" href="../stock/view.php">Stock</a>
-                        <a class="collapse-item" href="../nota_credito/view.php">Nota Crédito</a>
-                        <a class="collapse-item" href="../nota_debito/view.php">Nota Débito</a>
-
-                        <!-- Divisor -->
-                        <div class="collapse-divider"></div>
-
-                        <!-- Categoría: Productos -->
-                        <h6 class="collapse-header">Gestión de Productos:</h6>
-                        <a class="collapse-item" href="../producto/view.php">Producto</a>
-                        <a class="collapse-item" href="../u_medida/view.php">Unidades de Medida</a>
-
-                        <!-- Divisor -->
-                        <div class="collapse-divider"></div>
-
-                        <!-- Categoría: Proveedores y Depósitos -->
-                        <h6 class="collapse-header">Proveedores y Depósitos:</h6>
-                        <a class="collapse-item" href="../proveedor/view.php">Proveedores</a>
-                        <a class="collapse-item" href="../deposito/view.php">Depósito</a>
-
-                        <!-- Divisor -->
-                        <div class="collapse-divider"></div>
-
-                        <!-- Categoría: Localización 
-                        <h6 class="collapse-header">Localización:</h6>
-                        <a class="collapse-item" href="../ciudad/view.php">Ciudad</a>
-                        <a class="collapse-item" href="../departamento/view.php">Departamento</a>
-                        -->
-                    </div>
-                </div>
-            </li>
-
-
-
-
-    </li>
-            <!-- Nav Item - Pages Collapse Menu -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdm"
-                    aria-expanded="true" aria-controls="collapseAdm">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Administración</span>
-                </a>
-                <div id="collapseAdm" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="../usuario/view.php">Usuarios</a>
-                        <a class="collapse-item" href="../reset_password/reset.php">Cambiar contraseña</a>
-                    </div>
-                </div>
-            </li>
-
-
-<!-- Divider -->
-<hr class="sidebar-divider d-none d-md-block">
-
-<!-- Sidebar Toggler (Sidebar) -->
-<div class="text-center d-none d-md-inline">
-    <button class="rounded-circle border-0" id="sidebarToggle"></button>
-</div>
-
-<!-- Sidebar Message >
-<div class="sidebar-card d-none d-lg-flex">
-    <img class="sidebar-card-illustration mb-2" src="img/undraw_rocket.svg" alt="...">
-    <p class="text-center mb-2"><strong>SB Admin Pro</strong> is packed with premium features, components, and more!</p>
-    <a class="btn btn-success btn-sm" href="https://startbootstrap.com/theme/sb-admin-pro">Upgrade to Pro!</a>
-</div-->
-
-</ul>
-<!-- End of Sidebar -->
-
-<!-- Content Wrapper -->
-<div id="content-wrapper" class="d-flex flex-column">
-
-<!-- Main Content -->
-<div id="content">
-
-    <!-- Topbar -->
-    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
-        <!-- Sidebar Toggle (Topbar) -->
-        <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-            <i class="fa fa-bars"></i>
-        </button>
-
-        <!-- Topbar Search >
-        <form
-            class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-            <div class="input-group">
-                <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..."
-                    aria-label="Search" aria-describedby="basic-addon2">
-                <div class="input-group-append">
-                    <button class="btn btn-primary" type="button">
-                        <i class="fas fa-search fa-sm"></i>
-                    </button>
-                </div>
-            </div>
-        </form-->
-
-        <!-- Topbar Navbar -->
-        <ul class="navbar-nav ml-auto">
-
-            <!-- Nav Item - Search Dropdown (Visible Only XS)>
-            <li class="nav-item dropdown no-arrow d-sm-none">
-                <a class="nav-link dropdown-toggle" href="#" id="searchDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-search fa-fw"></i>
-                </a>
-                <!-- Dropdown - Messages>
-                <div class="dropdown-menu dropdown-menu-right p-3 shadow animated--grow-in"
-                    aria-labelledby="searchDropdown">
-                    <form class="form-inline mr-auto w-100 navbar-search">
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-light border-0 small"
-                                placeholder="Search for..." aria-label="Search"
-                                aria-describedby="basic-addon2">
-                            <div class="input-group-append">
-                                <button class="btn btn-primary" type="button">
-                                    <i class="fas fa-search fa-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </li>
-
-            <!-- Nav Item - Alerts>
-            <li class="nav-item dropdown no-arrow mx-1">
-                <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-bell fa-fw"></i>
-                    <!-- Counter - Alerts>
-                    <span class="badge badge-danger badge-counter">3+</span>
-                </a>
-                <!-- Dropdown - Alerts>
-                <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                    aria-labelledby="alertsDropdown">
-                    <h6 class="dropdown-header">
-                        Alerts Center
-                    </h6>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-primary">
-                                <i class="fas fa-file-alt text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 12, 2019</div>
-                            <span class="font-weight-bold">A new monthly report is ready to download!</span>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-success">
-                                <i class="fas fa-donate text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 7, 2019</div>
-                            $290.29 has been deposited into your account!
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="mr-3">
-                            <div class="icon-circle bg-warning">
-                                <i class="fas fa-exclamation-triangle text-white"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-gray-500">December 2, 2019</div>
-                            Spending Alert: We've noticed unusually high spending for your account.
-                        </div>
-                    </a>
-                    <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
-                </div>
-            </li-->
-
-            <!-- Nav Item - Messages>
-            <li class="nav-item dropdown no-arrow mx-1">
-                <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-envelope fa-fw"></i>
-                    <!-- Counter - Messages>
-                    <span class="badge badge-danger badge-counter">7</span>
-                </a>
-                <!-- Dropdown - Messages>
-                <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                    aria-labelledby="messagesDropdown">
-                    <h6 class="dropdown-header">
-                        Message Center
-                    </h6>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_1.svg"
-                                alt="...">
-                            <div class="status-indicator bg-success"></div>
-                        </div>
-                        <div class="font-weight-bold">
-                            <div class="text-truncate">Hi there! I am wondering if you can help me with a
-                                problem I've been having.</div>
-                            <div class="small text-gray-500">Emily Fowler · 58m</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_2.svg"
-                                alt="...">
-                            <div class="status-indicator"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">I have the photos that you ordered last month, how
-                                would you like them sent to you?</div>
-                            <div class="small text-gray-500">Jae Chun · 1d</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="img/undraw_profile_3.svg"
-                                alt="...">
-                            <div class="status-indicator bg-warning"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">Last month's report looks great, I am very happy with
-                                the progress so far, keep up the good work!</div>
-                            <div class="small text-gray-500">Morgan Alvarez · 2d</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <div class="dropdown-list-image mr-3">
-                            <img class="rounded-circle" src="https://source.unsplash.com/Mv9hjnEUHR4/60x60"
-                                alt="...">
-                            <div class="status-indicator bg-success"></div>
-                        </div>
-                        <div>
-                            <div class="text-truncate">Am I a good boy? The reason I ask is because someone
-                                told me that people say this to all dogs, even if they aren't good...</div>
-                            <div class="small text-gray-500">Chicken the Dog · 2w</div>
-                        </div>
-                    </a>
-                    <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
-                </div>
-            </li-->
-
-            <div class="topbar-divider d-none d-sm-block"></div>
-
-            <!-- Nav Item - User Information -->
-            <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?php echo htmlspecialchars($auth_user['username']); ?></span>
-                                <img class="img-profile rounded-circle"
-                                    src="../../img/undraw_profile.svg">
-                            </a>
-                            <!-- Dropdown - User Information -->
-                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                                aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="../usuario/view.php">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Perfil
-                                </a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Cerrar sesión
-                                </a>
-                            </div>
-            </li>
-
-        </ul>
-
-    </nav>
-    <!-- End of Topbar -->
-
-    <div class="container-fluid">
+<!-- Contenido específico del módulo -->
+<div class="container-fluid">
     <!-- Título de la página -->
-    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-warehouse"></i> Gestión de Stock</h1>
+    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-warehouse"></i> Inventario por Depósitos</h1>
 
     <!-- Formulario de Filtrado -->
     <form method="GET" action="">
@@ -450,10 +94,36 @@ try {
                 <select name="filtro_deposito" id="filtro_deposito" class="form-control">
                     <option value="">Todos los Depósitos</option>
                     <?php
-                    require "../../config/database.php";
-                    $query_depositos = $pdo->query("SELECT cod_deposito, descrip FROM deposito");
-                    while ($deposito = $query_depositos->fetch(PDO::FETCH_ASSOC)) {
-                        echo "<option value=\"{$deposito['cod_deposito']}\">{$deposito['descrip']}</option>";
+                    try {
+                        // Verificar si existe deposito_id o cod_deposito
+                        $query_test = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'deposito' LIMIT 1");
+                        $col_test = $query_test->fetch(PDO::FETCH_ASSOC);
+                        $has_deposito_id = false;
+                        if ($col_test) {
+                            $query_cols = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'deposito'");
+                            while ($col = $query_cols->fetch(PDO::FETCH_ASSOC)) {
+                                if ($col['column_name'] === 'deposito_id') {
+                                    $has_deposito_id = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if ($has_deposito_id) {
+                            $query_depositos = $pdo->query("SELECT deposito_id, deposito_descri FROM deposito ORDER BY deposito_descri ASC");
+                            while ($deposito = $query_depositos->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($filtro_deposito == $deposito['deposito_id']) ? 'selected' : '';
+                                echo "<option value=\"" . htmlspecialchars($deposito['deposito_id']) . "\" $selected>" . htmlspecialchars($deposito['deposito_descri']) . "</option>";
+                            }
+                        } else {
+                            $query_depositos = $pdo->query("SELECT cod_deposito, descrip FROM deposito ORDER BY descrip ASC");
+                            while ($deposito = $query_depositos->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($filtro_deposito == $deposito['cod_deposito']) ? 'selected' : '';
+                                echo "<option value=\"" . htmlspecialchars($deposito['cod_deposito']) . "\" $selected>" . htmlspecialchars($deposito['descrip']) . "</option>";
+                            }
+                        }
+                    } catch (PDOException $e) {
+                        echo "<option value=\"\">Error al cargar depósitos</option>";
                     }
                     ?>
                 </select>
@@ -464,9 +134,28 @@ try {
                 <select name="filtro_producto" id="filtro_producto" class="form-control">
                     <option value="">Todos los Productos</option>
                     <?php
-                    $query_productos = $pdo->query("SELECT cod_producto, p_descrip FROM producto");
-                    while ($producto = $query_productos->fetch(PDO::FETCH_ASSOC)) {
-                        echo "<option value=\"{$producto['cod_producto']}\">{$producto['p_descrip']}</option>";
+                    try {
+                        // Verificar estructura de tabla productos
+                        $query_test = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_name IN ('productos', 'producto') LIMIT 1");
+                        $table_test = $query_test->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($table_test && $table_test['table_name'] === 'productos') {
+                            // Usar tabla productos con producto_id y producto_descri
+                            $query_productos = $pdo->query("SELECT producto_id, producto_descri FROM productos WHERE producto_estado = 'ACTIVO' ORDER BY producto_descri ASC");
+                            while ($producto = $query_productos->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($filtro_producto == $producto['producto_id']) ? 'selected' : '';
+                                echo "<option value=\"" . htmlspecialchars($producto['producto_id']) . "\" $selected>" . htmlspecialchars($producto['producto_descri']) . "</option>";
+                            }
+                        } else {
+                            // Fallback: usar tabla producto con cod_producto y p_descrip
+                            $query_productos = $pdo->query("SELECT cod_producto, p_descrip FROM producto ORDER BY p_descrip ASC");
+                            while ($producto = $query_productos->fetch(PDO::FETCH_ASSOC)) {
+                                $selected = ($filtro_producto == $producto['cod_producto']) ? 'selected' : '';
+                                echo "<option value=\"" . htmlspecialchars($producto['cod_producto']) . "\" $selected>" . htmlspecialchars($producto['p_descrip']) . "</option>";
+                            }
+                        }
+                    } catch (PDOException $e) {
+                        echo "<option value=\"\">Error al cargar productos</option>";
                     }
                     ?>
                 </select>
@@ -474,6 +163,7 @@ try {
 
             <div class="col-md-4 align-self-end">
                 <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="view.php" class="btn btn-secondary">Limpiar</a>
             </div>
         </div>
     </form>
@@ -496,45 +186,102 @@ try {
                     </thead>
                     <tbody>
                         <?php
-                        // Construir la consulta SQL con los filtros seleccionados
-                        $filtro_deposito = $_GET['filtro_deposito'] ?? '';
-                        $filtro_producto = $_GET['filtro_producto'] ?? '';
+                        try {
+                            // Verificar qué tablas existen en la BD
+                            $query_tables = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_name IN ('stock_producto', 'stock', 'productos', 'producto')");
+                            $tables = [];
+                            while ($t = $query_tables->fetch(PDO::FETCH_ASSOC)) {
+                                $tables[] = $t['table_name'];
+                            }
+                            
+                            // Determinar estructura de deposito
+                            $query_dep_cols = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'deposito'");
+                            $dep_cols = [];
+                            while ($col = $query_dep_cols->fetch(PDO::FETCH_ASSOC)) {
+                                $dep_cols[] = $col['column_name'];
+                            }
+                            $has_deposito_id = in_array('deposito_id', $dep_cols);
+                            $dep_id_col = $has_deposito_id ? 'deposito_id' : 'cod_deposito';
+                            $dep_desc_col = $has_deposito_id ? 'deposito_descri' : 'descrip';
+                            
+                            // Usar stock_producto si existe, sino intentar con stock
+                            if (in_array('stock_producto', $tables)) {
+                                // Estructura moderna: stock_producto con productos
+                                if (in_array('productos', $tables)) {
+                                    $sql = "SELECT d.$dep_desc_col AS deposito, p.producto_descri AS producto, p.producto_precio AS precio_unitario, s.stock_prod_existente AS cantidad
+                                            FROM stock_producto s
+                                            JOIN deposito d ON d.$dep_id_col = s.deposito_id
+                                            JOIN productos p ON p.producto_id = s.producto_id
+                                            WHERE 1=1";
+                                    
+                                    if (!empty($filtro_deposito)) {
+                                        $sql .= " AND s.deposito_id = :filtro_deposito";
+                                    }
+                                    if (!empty($filtro_producto)) {
+                                        $sql .= " AND s.producto_id = :filtro_producto";
+                                    }
+                                    $sql .= " ORDER BY d.$dep_desc_col, p.producto_descri";
+                                } else {
+                                    // Fallback: stock_producto con producto
+                                    $sql = "SELECT d.$dep_desc_col AS deposito, p.p_descrip AS producto, p.precio AS precio_unitario, s.stock_prod_existente AS cantidad
+                                            FROM stock_producto s
+                                            JOIN deposito d ON d.$dep_id_col = s.deposito_id
+                                            JOIN producto p ON p.cod_producto = s.producto_id
+                                            WHERE 1=1";
+                                    
+                                    if (!empty($filtro_deposito)) {
+                                        $sql .= " AND s.deposito_id = :filtro_deposito";
+                                    }
+                                    if (!empty($filtro_producto)) {
+                                        $sql .= " AND s.producto_id = :filtro_producto";
+                                    }
+                                    $sql .= " ORDER BY d.$dep_desc_col, p.p_descrip";
+                                }
+                            } else {
+                                // Fallback: tabla stock antigua (si existe)
+                                $sql = "SELECT d.$dep_desc_col AS deposito, p.p_descrip AS producto, p.precio AS precio_unitario, s.stock_existencia AS cantidad
+                                        FROM stock s
+                                        JOIN deposito d ON d.$dep_id_col = s.$dep_id_col
+                                        JOIN producto p ON p.cod_producto = s.cod_producto
+                                        WHERE 1=1";
+                                
+                                if (!empty($filtro_deposito)) {
+                                    $sql .= " AND s.$dep_id_col = :filtro_deposito";
+                                }
+                                if (!empty($filtro_producto)) {
+                                    $sql .= " AND s.cod_producto = :filtro_producto";
+                                }
+                                $sql .= " ORDER BY d.$dep_desc_col, p.p_descrip";
+                            }
 
-                        $sql = "SELECT d.descrip AS deposito, p.p_descrip AS producto, p.precio AS precio_unitario, s.stock_existencia AS cantidad
-                                FROM stock s
-                                JOIN deposito d ON d.cod_deposito = s.cod_deposito
-                                JOIN producto p ON p.cod_producto = s.cod_producto
-                                WHERE 1=1";
+                            $stmt = $pdo->prepare($sql);
 
-                        // Aplicar filtros si están seleccionados
-                        if (!empty($filtro_deposito)) {
-                            $sql .= " AND s.cod_deposito = :filtro_deposito";
-                        }
-                        if (!empty($filtro_producto)) {
-                            $sql .= " AND s.cod_producto = :filtro_producto";
-                        }
+                            // Vincular parámetros si se aplican filtros
+                            if (!empty($filtro_deposito)) {
+                                $stmt->bindParam(':filtro_deposito', $filtro_deposito, PDO::PARAM_INT);
+                            }
+                            if (!empty($filtro_producto)) {
+                                $stmt->bindParam(':filtro_producto', $filtro_producto, PDO::PARAM_INT);
+                            }
 
-                        $stmt = $pdo->prepare($sql);
+                            $stmt->execute();
+                            $stocks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                        // Vincular parámetros si se aplican filtros
-                        if (!empty($filtro_deposito)) {
-                            $stmt->bindParam(':filtro_deposito', $filtro_deposito, PDO::PARAM_INT);
-                        }
-                        if (!empty($filtro_producto)) {
-                            $stmt->bindParam(':filtro_producto', $filtro_producto, PDO::PARAM_INT);
-                        }
-
-                        $stmt->execute();
-                        $stocks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                        // Mostrar los resultados
-                        foreach ($stocks as $stock) {
-                            echo "<tr>
-                                    <td>{$stock['deposito']}</td>
-                                    <td>{$stock['producto']}</td>
-                                    <td>{$stock['precio_unitario']}</td>
-                                    <td>{$stock['cantidad']}</td>
-                                  </tr>";
+                            // Mostrar los resultados
+                            if (empty($stocks)) {
+                                echo "<tr><td colspan='4' class='text-center'>No se encontraron registros con los filtros seleccionados.</td></tr>";
+                            } else {
+                                foreach ($stocks as $stock) {
+                                    echo "<tr>
+                                            <td>" . htmlspecialchars($stock['deposito']) . "</td>
+                                            <td>" . htmlspecialchars($stock['producto']) . "</td>
+                                            <td>" . number_format($stock['precio_unitario'], 2) . "</td>
+                                            <td>" . htmlspecialchars($stock['cantidad']) . "</td>
+                                          </tr>";
+                                }
+                            }
+                        } catch (PDOException $e) {
+                            echo "<tr><td colspan='4' class='text-center text-danger'>Error al consultar stock: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                         }
                         ?>
                     </tbody>
@@ -544,56 +291,34 @@ try {
     </div>
 </div>
 
-                <!-- /.container-fluid -->
-            </div>
-            <!-- End of Main Content -->
-
-            <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; web - Nicolas Dominguez - 2025</span>
-                    </div>
-                </div>
-            </footer>
-            <!-- End of Footer -->
-        </div>
-        <!-- End of Content Wrapper -->
-
-            <!-- Modal para Cerrar Sesión -->
-        <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">¿Listo para salir?</h5>
-                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">Selecciona "Cerrar sesión" si estás listo para finalizar tu sesión actual.</div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
-                        <a class="btn btn-primary" href="../../login.html">Cerrar sesión</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-    <!-- End of Page Wrapper -->
-
-    <!-- Scripts -->
-    <script src="../../vendor/jquery/jquery.min.js"></script>
-    <script src="../../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../vendor/jquery-easing/jquery.easing.min.js"></script>
-    <script src="../../js/sb-admin-2.min.js"></script>
-    <script src="../../vendor/datatables/jquery.dataTables.min.js"></script>
-    <script src="../../vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#dataTable').DataTable();
-        });
-    </script>
-</body>
-
-</html>
+<?php
+$inline_js = "
+$(document).ready(function () {
+    $('#dataTable').DataTable({
+        language: {
+            decimal: '',
+            emptyTable: 'No hay datos disponibles en la tabla',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+            infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+            infoFiltered: '(filtrado de _MAX_ registros totales)',
+            lengthMenu: 'Mostrar _MENU_ registros',
+            loadingRecords: 'Cargando...',
+            processing: 'Procesando...',
+            search: 'Buscar:',
+            zeroRecords: 'No se encontraron registros coincidentes',
+            paginate: {
+                first: 'Primero',
+                last: 'Último',
+                next: 'Siguiente',
+                previous: 'Anterior'
+            },
+            aria: {
+                sortAscending: ': activar para ordenar de manera ascendente',
+                sortDescending: ': activar para ordenar de manera descendente'
+            }
+        }
+    });
+});
+";
+include '../../footer.php';
+?>

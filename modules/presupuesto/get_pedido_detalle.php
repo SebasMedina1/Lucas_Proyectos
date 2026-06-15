@@ -13,17 +13,16 @@ try {
     $pdo = new PDO($dsn, $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $query = $pdo->prepare("
-        SELECT
-        p.cod_producto AS codigo,
-        p.p_descrip AS descripcion,
-        dp.cantidad,
-        p.precio,
-        ti.porcentaje_tipo_iva AS iva
-        FROM detalle_pedidos dp
-        JOIN producto p ON dp.cod_producto = p.cod_producto
-        JOIN tipo_iva ti ON p.iva_id = ti.iva_id
-        WHERE dp.pedido_id = :pedido_id
+    $query = $pdo->prepare("SELECT
+                                mp.id_materia_prima AS codigo,
+                                mp.materia_prima_descripcion AS descripcion,
+                                pdc.cantidad_pedido AS cantidad,
+                                0 AS precio,
+                                ti.iva_descri AS iva
+                                FROM pedido_detalle_compra pdc
+                                JOIN materia_prima mp ON mp.id_materia_prima = pdc.id_materia_prima
+                                LEFT JOIN tipo_iva ti ON mp.iva_id = ti.iva_id
+                                WHERE pdc.id_pedido_compra = :pedido_id;
     ");
     $query->bindParam(':pedido_id', $pedidoId, PDO::PARAM_INT);
     $query->execute();

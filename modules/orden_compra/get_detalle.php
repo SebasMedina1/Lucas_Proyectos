@@ -11,19 +11,19 @@ if (isset($_GET['ped_id'])) {
 
         $query = $pdo->prepare("
             SELECT 
-                p.p_descrip AS producto,
-                odc.orden_cantidad AS cantidad,
-                odc.orden_precio AS precio,
-                (odc.orden_cantidad * odc.orden_precio) AS subtotal,
-                ti.porcentaje_tipo_iva AS iva
+                mp.materia_prima_descripcion AS producto,
+                odc.oc_cantidad_compra AS cantidad,
+                odc.oc_precio_compra AS precio,
+                (odc.oc_cantidad_compra * odc.oc_precio_compra) AS subtotal,
+                ti.iva_descri AS iva
             FROM 
-                orden_detalle_compras odc
+                orden_detalle_compra odc
             JOIN 
-                producto p ON odc.cod_producto = p.cod_producto
-            JOIN 
-                tipo_iva ti ON p.iva_id = ti.iva_id
+                materia_prima mp ON odc.id_materia_prima = mp.id_materia_prima
+            LEFT JOIN 
+                tipo_iva ti ON mp.iva_id = ti.iva_id
             WHERE 
-                odc.orden_id = :ped_id");
+                odc.id_orden_compra = :ped_id");
         $query->bindParam(':ped_id', $ped_id, PDO::PARAM_INT);
         $query->execute();
 
